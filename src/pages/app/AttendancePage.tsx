@@ -177,7 +177,7 @@ export const AttendancePage: React.FC = () => {
       if (!res.queuedOffline) {
         const { data: notificationResult, error: notificationError } = await (supabase.functions as any).invoke(
           'send-parent-whatsapp',
-          { body: { classId: selectedClassId, attendanceDate: selectedDate } }
+          { body: { classId: selectedClassId, attendanceDate: selectedDate, language: effectiveLanguage, appName: effectiveAppName } }
         );
         if (notificationError || notificationResult?.error) {
           const detail = notificationResult?.error || notificationError?.message || 'Unknown notification error';
