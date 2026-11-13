@@ -3,6 +3,10 @@ import type { LocalSettings } from '../types/database';
 const LOCAL_SETTINGS_KEY = 'hazri_device_settings_v1';
 
 export const DEFAULT_MESSAGE_TEMPLATE =
+  'Mohtaram walidain, aap ke bachay {student_name} ki class {class_name} mein {date} ko hazri {status} mark hui. Shukriya, {app_name}';
+export const DEFAULT_URDU_MESSAGE_TEMPLATE =
+  'محترم والدین، آپ کے بچے {student_name} کی کلاس {class_name} میں {date} کو حاضری {status} درج کی گئی۔ شکریہ، {app_name}';
+export const LEGACY_ENGLISH_MESSAGE_TEMPLATE =
   'Dear Parent, your child {student_name} of class {class_name} was marked {status} on {date}. Regards, {app_name}';
 
 export const DEFAULT_LOCAL_SETTINGS: LocalSettings = {
