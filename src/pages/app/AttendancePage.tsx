@@ -27,6 +27,13 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+const ROMAN_URDU_STATUS: Record<AttendanceStatusKey, string> = {
+  present: 'Hazir',
+  absent: 'Ghair hazir',
+  late: 'Dair se hazir',
+  leave: 'Rukhsat',
+};
+
 export const AttendancePage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -144,7 +151,7 @@ export const AttendancePage: React.FC = () => {
           if (!st || !student || !st.notifyOnAbsent) return null;
           return {
             student,
-            statusName: effectiveLanguage === 'ur' ? st.label_ur : st.label_en,
+            statusName: effectiveLanguage === 'ur' ? st.label_ur : ROMAN_URDU_STATUS[r.status],
             color: st.color,
           };
         })
@@ -395,7 +402,7 @@ export const AttendancePage: React.FC = () => {
                         const statusLabel =
                           effectiveLanguage === 'ur'
                             ? activeStatus.label_ur
-                            : activeStatus.label_en;
+                            : ROMAN_URDU_STATUS[currentStatus];
                         setWhatsAppStudent({ student, statusName: statusLabel });
                       }}
                       aria-label={`${t('attendance.notify_parent')} (${student.name})`}
