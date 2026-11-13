@@ -118,7 +118,7 @@ export const AttendancePage: React.FC = () => {
     try {
       const saved = await saveAttendance([{ studentId, status, note }]);
       if (saved.queuedOffline) {
-        showToast('Attendance queued offline. Parent WhatsApp will send after the device reconnects and syncs.', 'info');
+        showToast('Attendance queued offline. Reconnect, then save attendance again to trigger the parent WhatsApp message.', 'info');
         return;
       }
 
