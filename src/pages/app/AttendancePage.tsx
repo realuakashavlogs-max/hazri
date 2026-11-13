@@ -11,6 +11,7 @@ import { Modal } from '../../components/ui/Modal';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { buildWhatsAppLink } from '../../lib/whatsapp';
+import { supabase } from '../../lib/supabaseClient';
 import type { AttendanceStatusKey, Student } from '../../types/database';
 import {
   Calendar,
@@ -144,11 +145,32 @@ export const AttendancePage: React.FC = () => {
         res.queuedOffline ? 'info' : 'success'
       );
 
+      if (!res.queuedOffline) {
+        const { data: notificationResult, error: notificationError } = await supabase.functions.invoke(
+          'send-parent-whatsapp',
+          { body: { classId: selectedClassId, attendanceDate: selectedDate } }
+        );
+        if (notificationError || notificationResult?.error) {
+          const detail = notificationResult?.error || notificationError?.message || 'Unknown notification error';
+          showToast(
+            detail.includes('WHATSAPP_NOT_CONFIGURED') || detail.includes('not configured')
+              ? 'Attendance saved. WhatsApp API setup is still required before parents can receive messages.'
+              : `Attendance saved, but parent notification failed: ${detail}`,
+            'info'
+          );
+        } else if ((notificationResult?.sent || 0) > 0) {
+          showToast(
+            `WhatsApp notifications sent: ${notificationResult.sent}${notificationResult.failed ? `, failed: ${notificationResult.failed}` : ''}`,
+            notificationResult.failed ? 'info' : 'success'
+          );
+        }
+      }
+
       const toNotify = recordsToSave
         .map((r) => {
           const st = FIXED_STATUS_MAP[r.status];
           const student = students.find((s) => s.id === r.studentId);
-          if (!st || !student || !st.notifyOnAbsent) return null;
+          if (!st || !student || (r.status !== 'absent' && r.status !== 'leave')) return null;
           return {
             student,
             statusName: effectiveLanguage === 'ur' ? st.label_ur : ROMAN_URDU_STATUS[r.status],
