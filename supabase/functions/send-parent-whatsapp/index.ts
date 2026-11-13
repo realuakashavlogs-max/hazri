@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
   if (authError || !authData.user) return json({ error: "Invalid session" }, 401);
   const userId = authData.user.id;
 
-  let body: { classId?: string; attendanceDate?: string };
+  let body: { classId?: string; attendanceDate?: string; language?: 'en' | 'ur'; appName?: string };
   try {
     body = await req.json();
   } catch {
@@ -93,8 +93,8 @@ Deno.serve(async (req: Request) => {
 
   const statusById = new Map((statuses || []).map((s: StatusRow) => [s.id, s.key]));
   const studentById = new Map((students || []).map((s: StudentRow) => [s.id, s]));
-  const language: "en" | "ur" = userSettings?.language === "ur" ? "ur" : "en";
-  const appName = userSettings?.app_display_name || "Hazri Book";
+  const language: "en" | "ur" = body.language === "ur" ? "ur" : body.language === "en" ? "en" : userSettings?.language === "ur" ? "ur" : "en";
+  const appName = body.appName?.trim() || userSettings?.app_display_name || "Hazri Book";
   const date = body.attendanceDate;
   const pending = (records || []).flatMap((record: AttendanceRow) => {
     const status = statusById.get(record.status_id);
