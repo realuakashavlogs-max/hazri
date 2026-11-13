@@ -10,8 +10,6 @@ const corsHeaders = {
 type StatusRow = { id: string; key: string };
 type AttendanceRow = { student_id: string; status_id: string };
 type StudentRow = { id: string; name: string; parent_name: string | null; parent_phone: string | null; class_id: string };
-type ClassRow = { id: string; name: string };
-
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -25,13 +23,6 @@ function normalizePakistanPhone(value: string | null): string | null {
   if (/^03\d{9}$/.test(digits)) return "92" + digits.slice(1);
   if (/^923\d{9}$/.test(digits)) return digits;
   return null;
-}
-
-function renderTemplate(template: string, vars: Record<string, string>) {
-  return Object.entries(vars).reduce(
-    (text, [key, value]) => text.replaceAll(`{${key}}`, value),
-    template,
-  );
 }
 
 Deno.serve(async (req: Request) => {
@@ -48,9 +39,12 @@ Deno.serve(async (req: Request) => {
   const leaveTemplate = Deno.env.get("WHATSAPP_TEMPLATE_LEAVE");
   if (!accessToken || !phoneNumberId || !graphVersion || !absentTemplate || !leaveTemplate) {
     return json({
+      configured: false,
+      sent: 0,
+      failed: 0,
       error: "WhatsApp Cloud API is not configured. Add the five WhatsApp secrets in Supabase Edge Function secrets.",
       code: "WHATSAPP_NOT_CONFIGURED",
-    }, 503);
+    });
   }
 
   const url = Deno.env.get("SUPABASE_URL");
