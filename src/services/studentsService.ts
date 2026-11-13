@@ -35,9 +35,14 @@ export const studentsService = {
   }): Promise<Student> {
     ensureConfigured();
 
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    if (!user) throw new Error('Please sign in again before adding students.');
+
     const { data, error } = await supabase
       .from('students')
       .insert({
+        user_id: user.id,
         class_id: params.classId,
         name: params.name,
         roll_no: params.rollNo || null,
@@ -61,6 +66,10 @@ export const studentsService = {
       .map((l) => l.trim())
       .filter((l) => l.length > 0);
 
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    if (!user) throw new Error('Please sign in again before adding students.');
+
     const parsed = lines.map((line) => {
       const parts = line.split(',').map((p) => p.trim());
       const hasRoll = parts.length > 1 && /^\d+$/.test(parts[0]);
@@ -68,6 +77,7 @@ export const studentsService = {
       const name = hasRoll ? parts[1] : parts[0];
       const phone = parts.length > 2 ? parts[2] : null;
       return {
+        user_id: user.id,
         class_id: params.classId,
         name,
         roll_no: rollNo,
