@@ -26,8 +26,6 @@
     "send_reset_link": "ری سیٹ لنک بھیجیں",
     "no_account": "اکاؤنٹ نہیں ہے؟",
     "have_account": "پہلے سے اکاؤنٹ موجود ہے؟",
-    "demo_teacher": "ڈیمو استاد",
-    "demo_admin": "ڈیمو ایڈمن",
     "check_email_title": "اپنا ای میل چیک کریں",
     "check_email_desc": "ہم نے {{email}} پر تصدیقی لنک بھیجا ہے۔ لاگ ان سے پہلے ای میل کی تصدیق کریں۔",
     "blocked_title": "آپ کا اکاؤنٹ بلاک ہے",

@@ -26,8 +26,6 @@
     "send_reset_link": "Send Reset Link",
     "no_account": "Don't have an account?",
     "have_account": "Already have an account?",
-    "demo_teacher": "Demo Teacher",
-    "demo_admin": "Demo Admin",
     "check_email_title": "Check Your Email",
     "check_email_desc": "We sent a confirmation link to {{email}}. Please verify your email before signing in.",
     "blocked_title": "Your Account is Blocked",

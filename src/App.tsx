@@ -4,6 +4,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { AppRoutes } from './routes/AppRoutes';
+import { SupabaseNotConfigured } from './components/SupabaseNotConfigured';
+import { isSupabaseConfigured } from './lib/supabaseClient';
 import './lib/i18n';
 
 const queryClient = new QueryClient({
@@ -16,6 +18,10 @@ const queryClient = new QueryClient({
 });
 
 export function App() {
+  if (!isSupabaseConfigured) {
+    return <SupabaseNotConfigured />;
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>

@@ -12,8 +12,6 @@ import { studentsService } from './studentsService';
 import { attendanceService } from './attendanceService';
 import { statusesService } from './statusesService';
 
-const LOCAL_ADMIN_USERS_KEY = 'hazri_admin_users';
-
 export interface AdminOverviewStats {
   totalUsers: number;
   activeUsers: number;
@@ -22,50 +20,15 @@ export interface AdminOverviewStats {
   recordsToday: number;
 }
 
-function getLocalUsers(): AdminUserOverview[] {
-  const data = localStorage.getItem(LOCAL_ADMIN_USERS_KEY);
-  if (!data) {
-    const initial: AdminUserOverview[] = [
-      {
-        id: 'admin_demo_01',
-        email: 'realuakashavlogs@gmail.com',
-        full_name: 'App Administrator',
-        role: 'admin',
-        is_blocked: false,
-        created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
-      },
-      {
-        id: 'teacher_demo_01',
-        email: 'teacher@hazribook.com',
-        full_name: 'Ustadh Ahmad',
-        role: 'user',
-        is_blocked: false,
-        created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
-      },
-      {
-        id: 'teacher_demo_02',
-        email: 'fatima.tutor@example.com',
-        full_name: 'Fatima Teacher',
-        role: 'user',
-        is_blocked: false,
-        created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
-      },
-    ];
-    localStorage.setItem(LOCAL_ADMIN_USERS_KEY, JSON.stringify(initial));
-    return initial;
+function ensureConfigured() {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('Supabase is not configured');
   }
-  return JSON.parse(data);
-}
-
-function saveLocalUsers(users: AdminUserOverview[]) {
-  localStorage.setItem(LOCAL_ADMIN_USERS_KEY, JSON.stringify(users));
 }
 
 export const adminService = {
   async getAllUsers(): Promise<AdminUserOverview[]> {
-    if (!isSupabaseConfigured) {
-      return getLocalUsers();
-    }
+    ensureConfigured();
 
     // Try optional admin_user_overview RPC first, fall back to profiles table
     const rpcRes = await supabase.rpc('admin_user_overview');
@@ -83,38 +46,21 @@ export const adminService = {
   },
 
   async getUserById(userId: string): Promise<Profile | null> {
-    if (!isSupabaseConfigured) {
-      return getLocalUsers().find((u) => u.id === userId) || null;
-    }
+    ensureConfigured();
 
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) return null;
     return data;
   },
 
   async getAdminStats(): Promise<AdminOverviewStats> {
+    ensureConfigured();
     const today = new Date().toISOString().split('T')[0];
-
-    if (!isSupabaseConfigured) {
-      const users = getLocalUsers();
-      const studentsRaw = localStorage.getItem('hazri_local_students');
-      const attendanceRaw = localStorage.getItem('hazri_local_attendance');
-      const students: Student[] = studentsRaw ? JSON.parse(studentsRaw) : [];
-      const attendance: AttendanceRecord[] = attendanceRaw ? JSON.parse(attendanceRaw) : [];
-
-      return {
-        totalUsers: users.length,
-        activeUsers: users.filter((u) => !u.is_blocked).length,
-        blockedUsers: users.filter((u) => u.is_blocked).length,
-        totalStudents: students.length,
-        recordsToday: attendance.filter((a) => a.attendance_date === today).length,
-      };
-    }
 
     const [usersRes, studentsRes, attendanceRes] = await Promise.all([
       supabase.from('profiles').select('id, is_blocked'),
@@ -156,14 +102,13 @@ export const adminService = {
   },
 
   async setUserBlocked(userId: string, isBlocked: boolean): Promise<void> {
-    if (!isSupabaseConfigured) {
-      const users = getLocalUsers();
-      const idx = users.findIndex((u) => u.id === userId);
-      if (idx !== -1) {
-        users[idx].is_blocked = isBlocked;
-        saveLocalUsers(users);
-      }
-      return;
+    ensureConfigured();
+
+    const {
+      data: { user: currentAuthUser },
+    } = await supabase.auth.getUser();
+    if (currentAuthUser && currentAuthUser.id === userId) {
+      throw new Error('Admins cannot block their own account.');
     }
 
     const { error } = await supabase
@@ -175,14 +120,13 @@ export const adminService = {
   },
 
   async setUserRole(userId: string, role: 'user' | 'admin'): Promise<void> {
-    if (!isSupabaseConfigured) {
-      const users = getLocalUsers();
-      const idx = users.findIndex((u) => u.id === userId);
-      if (idx !== -1) {
-        users[idx].role = role;
-        saveLocalUsers(users);
-      }
-      return;
+    ensureConfigured();
+
+    const {
+      data: { user: currentAuthUser },
+    } = await supabase.auth.getUser();
+    if (currentAuthUser && currentAuthUser.id === userId) {
+      throw new Error('Admins cannot change their own role.');
     }
 
     const { error } = await supabase

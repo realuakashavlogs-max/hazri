@@ -125,7 +125,7 @@ export const SignUpPage: React.FC = () => {
                 <Input
                   label={t('auth.email')}
                   type="email"
-                  placeholder="e.g. teacher@hazribook.com"
+                  placeholder="you@example.com"
                   error={errors.email?.message}
                   {...register('email')}
                 />

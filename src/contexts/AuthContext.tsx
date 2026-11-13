@@ -25,38 +25,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [inspectedUser, setInspectedUser] = useState<Profile | null>(null);
 
   useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
 
     async function initAuth() {
       try {
-        if (!isSupabaseConfigured) {
-          const signedOut = localStorage.getItem('hazri_demo_signed_out') === 'true';
-          const stored = localStorage.getItem('hazri_demo_user');
-          if (stored) {
-            setUser(JSON.parse(stored));
-          } else if (!signedOut) {
-            const defaultUser: Profile = {
-              id: 'teacher_demo_01',
-              email: 'teacher@hazribook.com',
-              full_name: 'Ustadh Ahmad',
-              role: 'user',
-              is_blocked: false,
-              created_at: new Date().toISOString(),
-            };
-            localStorage.setItem('hazri_demo_user', JSON.stringify(defaultUser));
-            setUser(defaultUser);
-          }
-        } else {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (session?.user) {
-            const profile = await authService.getProfile(session.user.id);
-            if (mounted) setUser(profile);
-          }
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('Failed to restore Supabase session:', error.message);
+        }
+
+        if (session?.user) {
+          const profile = await authService.getProfileFromAuthUser(session.user);
+          if (mounted) setUser(profile);
+        } else if (mounted) {
+          setUser(null);
         }
       } catch (err) {
         console.error('Failed to init session:', err);
+        if (mounted) setUser(null);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -64,23 +60,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initAuth();
 
-    if (isSupabaseConfigured) {
-      const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-        if (session?.user) {
-          const profile = await authService.getProfile(session.user.id);
-          if (mounted) setUser(profile);
-        } else {
-          if (mounted) setUser(null);
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const profile = await authService.getProfileFromAuthUser(session.user);
+        if (mounted) {
+          setUser(profile);
+          setLoading(false);
         }
-      });
+      } else if (mounted) {
+        setUser(null);
+        setInspectedUser(null);
+        setLoading(false);
+      }
+    });
 
-      return () => {
-        mounted = false;
-        authListener.subscription.unsubscribe();
-      };
-    }
     return () => {
       mounted = false;
+      authListener.subscription.unsubscribe();
     };
   }, []);
 
@@ -114,10 +110,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfileName = async (fullName: string) => {
     if (!user) return;
     const updated = await authService.updateProfileName(user.id, fullName);
-    if (updated) setUser(updated);
+    if (updated) {
+      setUser(updated);
+    } else {
+      setUser((prev) => (prev ? { ...prev, full_name: fullName } : prev));
+    }
   };
 
-  const effectiveUserId = inspectedUser?.id || user?.id || '';
+  const effectiveUserId =
+    user?.role === 'admin' && inspectedUser ? inspectedUser.id : user?.id || '';
 
   return (
     <AuthContext.Provider

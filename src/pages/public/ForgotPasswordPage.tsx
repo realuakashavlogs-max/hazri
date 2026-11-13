@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { BookOpenCheck, CheckCircle, ArrowLeft } from 'lucide-react';
+import { BookOpenCheck, CheckCircle, ArrowLeft, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export const ForgotPasswordPage: React.FC = () => {
@@ -12,17 +12,18 @@ export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
     setIsLoading(true);
+    setServerError(null);
     try {
       await resetPassword(email);
       setSent(true);
-    } catch (err) {
-      console.error(err);
-      setSent(true);
+    } catch (err: any) {
+      setServerError(err.message || 'Failed to send password reset link. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -65,10 +66,18 @@ export const ForgotPasswordPage: React.FC = () => {
               <p className="text-sm text-[var(--color-muted)] mb-4">
                 Enter your registered email address and we'll send you instructions to reset your password.
               </p>
+
+              {serverError && (
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-xs text-[#DC2626] dark:text-red-300 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{serverError}</span>
+                </div>
+              )}
+
               <Input
                 label={t('auth.email')}
                 type="email"
-                placeholder="e.g. teacher@hazribook.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
