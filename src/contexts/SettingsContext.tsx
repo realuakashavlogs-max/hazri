@@ -55,7 +55,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const flushAndRefresh = useCallback(async () => {
     if (user && typeof navigator !== 'undefined' && navigator.onLine) {
-      const synced = await attendanceService.flushOfflineQueue();
+      const synced = await attendanceService.flushOfflineQueue(user.id);
       if (synced > 0) {
         queryClient.invalidateQueries({ queryKey: ['attendance'] });
         queryClient.invalidateQueries({ queryKey: ['attendance_range'] });
