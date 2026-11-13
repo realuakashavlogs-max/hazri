@@ -69,7 +69,7 @@ export type Database = {
         Row: ClassItem;
         Insert: {
           id?: string;
-          user_id?: string;
+          user_id: string;
           name: string;
           created_at?: string;
         };
@@ -82,7 +82,7 @@ export type Database = {
         Row: Student;
         Insert: {
           id?: string;
-          user_id?: string;
+          user_id: string;
           class_id: string;
           name: string;
           roll_no?: string | null;
