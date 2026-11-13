@@ -5,6 +5,8 @@ import {
   settingsService,
   DEFAULT_LOCAL_SETTINGS,
   DEFAULT_MESSAGE_TEMPLATE,
+  DEFAULT_URDU_MESSAGE_TEMPLATE,
+  LEGACY_ENGLISH_MESSAGE_TEMPLATE,
 } from '../services/settingsService';
 import { setAppLanguage } from '../lib/i18n';
 import { getPendingAttendanceCount } from '../lib/offlineQueue';
@@ -68,16 +70,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     flushAndRefresh();
-
     const interval = setInterval(async () => {
       const count = await getPendingAttendanceCount();
       setPendingOfflineCount(count);
     }, 3000);
-
-    const handleOnline = () => {
-      flushAndRefresh();
-    };
-
+    const handleOnline = () => { flushAndRefresh(); };
     window.addEventListener('online', handleOnline);
     return () => {
       clearInterval(interval);
@@ -91,18 +88,20 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     applyTheme(updated);
   };
 
-  const toggleDarkMode = () => {
-    updateSettings({ dark_mode: !settings.dark_mode });
-  };
-
+  const toggleDarkMode = () => updateSettings({ dark_mode: !settings.dark_mode });
   const toggleLanguage = () => {
     const nextLang = settings.language === 'en' ? 'ur' : 'en';
     updateSettings({ language: nextLang });
   };
+  const syncNow = async () => { await flushAndRefresh(); };
 
-  const syncNow = async () => {
-    await flushAndRefresh();
-  };
+  const savedTemplate = settings.message_template || DEFAULT_MESSAGE_TEMPLATE;
+  const isBuiltInTemplate =
+    savedTemplate === DEFAULT_MESSAGE_TEMPLATE ||
+    savedTemplate === LEGACY_ENGLISH_MESSAGE_TEMPLATE;
+  const effectiveMessageTemplate = isBuiltInTemplate
+    ? (settings.language === 'ur' ? DEFAULT_URDU_MESSAGE_TEMPLATE : DEFAULT_MESSAGE_TEMPLATE)
+    : savedTemplate;
 
   return (
     <SettingsContext.Provider
@@ -111,7 +110,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         effectiveAppName: settings.app_display_name || 'Hazri Book',
         effectivePrimaryColor: settings.primary_color || '#2563EB',
         effectiveLanguage: settings.language || 'en',
-        effectiveMessageTemplate: settings.message_template || DEFAULT_MESSAGE_TEMPLATE,
+        effectiveMessageTemplate,
         updateSettings,
         toggleDarkMode,
         toggleLanguage,
@@ -126,8 +125,6 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 export const useSettings = () => {
   const context = useContext(SettingsContext);
-  if (!context) {
-    throw new Error('useSettings must be used within a SettingsProvider');
-  }
+  if (!context) throw new Error('useSettings must be used within a SettingsProvider');
   return context;
 };
