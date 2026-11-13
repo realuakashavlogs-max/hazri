@@ -45,6 +45,7 @@ export type AttendanceRecord = {
 
 export type PendingAttendanceWrite = {
   id: string; // local IndexedDB key: `${student_id}_${attendance_date}`
+  user_id: string;
   class_id: string;
   student_id: string;
   attendance_date: string;
