@@ -1,56 +1,56 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { attendanceService } from '../services/attendanceService';
 import { useAuth } from '../contexts/AuthContext';
+import type { AttendanceStatusKey } from '../types/database';
 
 export function useAttendance(classId: string, date: string) {
-  const { effectiveUserId, inspectedUser } = useAuth();
+  const { user } = useAuth();
+  const userId = user?.id || '';
   const queryClient = useQueryClient();
-  const isReadOnly = Boolean(inspectedUser);
 
   const query = useQuery({
-    queryKey: ['attendance', effectiveUserId, classId, date],
-    queryFn: () => attendanceService.getAttendanceForDate({ userId: effectiveUserId, classId, date }),
-    enabled: Boolean(effectiveUserId && classId && date),
+    queryKey: ['attendance', userId, classId, date],
+    queryFn: () => attendanceService.getAttendanceForDate({ userId, classId, date }),
+    enabled: Boolean(userId && classId && date),
   });
 
   const saveAttendanceMutation = useMutation({
     mutationFn: (records: {
       studentId: string;
-      statusId: string;
+      status: AttendanceStatusKey;
       note?: string;
     }[]) =>
       attendanceService.saveAttendance(
         records.map((r) => ({
-          userId: effectiveUserId,
           classId,
           attendanceDate: date,
           studentId: r.studentId,
-          statusId: r.statusId,
+          status: r.status,
           note: r.note,
         }))
       ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attendance', effectiveUserId, classId, date] });
-      queryClient.invalidateQueries({ queryKey: ['attendance_range', effectiveUserId, classId] });
-      queryClient.invalidateQueries({ queryKey: ['user_attendance_date', effectiveUserId, date] });
+      queryClient.invalidateQueries({ queryKey: ['attendance', userId, classId, date] });
+      queryClient.invalidateQueries({ queryKey: ['attendance_range', userId, classId] });
+      queryClient.invalidateQueries({ queryKey: ['user_attendance_date', userId, date] });
     },
   });
 
   return {
     records: query.data || [],
     isLoading: query.isLoading,
-    isReadOnly,
     saveAttendance: saveAttendanceMutation.mutateAsync,
   };
 }
 
 export function useUserAttendanceForDate(date: string) {
-  const { effectiveUserId } = useAuth();
+  const { user } = useAuth();
+  const userId = user?.id || '';
 
   const query = useQuery({
-    queryKey: ['user_attendance_date', effectiveUserId, date],
-    queryFn: () => attendanceService.getAttendanceForUserDate(effectiveUserId, date),
-    enabled: Boolean(effectiveUserId && date),
+    queryKey: ['user_attendance_date', userId, date],
+    queryFn: () => attendanceService.getAttendanceForUserDate(userId, date),
+    enabled: Boolean(userId && date),
   });
 
   return {
@@ -60,18 +60,19 @@ export function useUserAttendanceForDate(date: string) {
 }
 
 export function useAttendanceRange(classId: string, startDate: string, endDate: string) {
-  const { effectiveUserId } = useAuth();
+  const { user } = useAuth();
+  const userId = user?.id || '';
 
   const query = useQuery({
-    queryKey: ['attendance_range', effectiveUserId, classId, startDate, endDate],
+    queryKey: ['attendance_range', userId, classId, startDate, endDate],
     queryFn: () =>
       attendanceService.getAttendanceForRange({
-        userId: effectiveUserId,
+        userId,
         classId,
         startDate,
         endDate,
       }),
-    enabled: Boolean(effectiveUserId && classId && startDate && endDate),
+    enabled: Boolean(userId && classId && startDate && endDate),
   });
 
   return {

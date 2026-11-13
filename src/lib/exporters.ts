@@ -1,26 +1,20 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { Student, AttendanceRecord, AttendanceStatus } from '../types/database';
+import type { Student, AttendanceRecord } from '../types/database';
+import { isPresentStatus } from './statuses';
 
 export function exportAttendanceCsv(params: {
   className: string;
   dateRange: { start: string; end: string };
   students: Student[];
   records: AttendanceRecord[];
-  statuses: AttendanceStatus[];
   appName: string;
 }): void {
-  const { className, dateRange, students, records, statuses, appName } = params;
-
-  const statusMap = new Map(statuses.map((s) => [s.id, s]));
-  const presentStatusIds = new Set(
-    statuses.filter((s) => s.counts_as_present).map((s) => s.id)
-  );
+  const { className, dateRange, students, records, appName } = params;
 
   const headers = [
     'Roll No',
     'Student Name',
-    'Parent Name',
     'Phone',
     'Total Sessions',
     'Present',
@@ -33,22 +27,15 @@ export function exportAttendanceCsv(params: {
   const rows = students.map((s) => {
     const studentRecs = records.filter((r) => r.student_id === s.id);
     const total = studentRecs.length;
-    const present = studentRecs.filter((r) => presentStatusIds.has(r.status_id)).length;
-    const absent = studentRecs.filter(
-      (r) => statusMap.get(r.status_id)?.key === 'absent'
-    ).length;
-    const late = studentRecs.filter(
-      (r) => statusMap.get(r.status_id)?.key === 'late'
-    ).length;
-    const leave = studentRecs.filter(
-      (r) => statusMap.get(r.status_id)?.key === 'leave'
-    ).length;
+    const present = studentRecs.filter((r) => isPresentStatus(r.status)).length;
+    const absent = studentRecs.filter((r) => r.status === 'absent').length;
+    const late = studentRecs.filter((r) => r.status === 'late').length;
+    const leave = studentRecs.filter((r) => r.status === 'leave').length;
     const pct = total > 0 ? ((present / total) * 100).toFixed(1) + '%' : 'N/A';
 
     return [
       `"${s.roll_no || ''}"`,
       `"${s.name}"`,
-      `"${s.parent_name || ''}"`,
       `"${s.parent_phone || ''}"`,
       total,
       present,
@@ -84,18 +71,12 @@ export function exportAttendancePdf(params: {
   dateRange: { start: string; end: string };
   students: Student[];
   records: AttendanceRecord[];
-  statuses: AttendanceStatus[];
   appName: string;
 }): void {
-  const { className, dateRange, students, records, statuses, appName } = params;
+  const { className, dateRange, students, records, appName } = params;
 
   const doc = new jsPDF();
-  const presentStatusIds = new Set(
-    statuses.filter((s) => s.counts_as_present).map((s) => s.id)
-  );
-  const statusMap = new Map(statuses.map((s) => [s.id, s]));
 
-  // Title & Header (#2563EB primary blue)
   doc.setFontSize(18);
   doc.setTextColor(37, 99, 235);
   doc.text(appName, 14, 20);
@@ -108,13 +89,10 @@ export function exportAttendancePdf(params: {
   const tableData = students.map((s) => {
     const studentRecs = records.filter((r) => r.student_id === s.id);
     const total = studentRecs.length;
-    const present = studentRecs.filter((r) => presentStatusIds.has(r.status_id)).length;
-    const absent = studentRecs.filter(
-      (r) => statusMap.get(r.status_id)?.key === 'absent'
-    ).length;
-    const late = studentRecs.filter(
-      (r) => statusMap.get(r.status_id)?.key === 'late'
-    ).length;
+    const present = studentRecs.filter((r) => isPresentStatus(r.status)).length;
+    const absent = studentRecs.filter((r) => r.status === 'absent').length;
+    const late = studentRecs.filter((r) => r.status === 'late').length;
+    const leave = studentRecs.filter((r) => r.status === 'leave').length;
     const pct = total > 0 ? `${((present / total) * 100).toFixed(0)}%` : '-';
 
     return [
@@ -125,13 +103,19 @@ export function exportAttendancePdf(params: {
       present.toString(),
       absent.toString(),
       late.toString(),
+      leave.toString(),
       pct,
     ];
   });
 
-  autoTable(doc, {
+  const runAutoTable =
+    typeof autoTable === 'function'
+      ? autoTable
+      : ((autoTable as unknown as { default?: typeof autoTable })?.default ?? autoTable);
+
+  runAutoTable(doc, {
     startY: 40,
-    head: [['Roll', 'Name', 'Phone', 'Total', 'Present', 'Absent', 'Late', 'Rate']],
+    head: [['Roll', 'Name', 'Phone', 'Total', 'Present', 'Absent', 'Late', 'Leave', 'Rate']],
     body: tableData,
     theme: 'grid',
     headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255] },

@@ -1,24 +1,51 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
-import type { AttendanceRecord, PendingAttendanceWrite } from '../types/database';
+import type {
+  AttendanceRecord,
+  AttendanceStatusKey,
+  PendingAttendanceWrite,
+} from '../types/database';
 import {
   enqueueAttendance,
   getAllPendingAttendance,
   clearSyncedAttendance,
 } from '../lib/offlineQueue';
 
-const LOCAL_ATTENDANCE_KEY = 'hazri_local_attendance';
-
-function getLocalAttendance(): AttendanceRecord[] {
-  const data = localStorage.getItem(LOCAL_ATTENDANCE_KEY);
-  return data ? JSON.parse(data) : [];
-}
-
-function saveLocalAttendance(records: AttendanceRecord[]) {
-  localStorage.setItem(LOCAL_ATTENDANCE_KEY, JSON.stringify(records));
+function ensureConfigured() {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('Supabase is not configured');
+  }
 }
 
 function toSupabaseUpsertRows(items: PendingAttendanceWrite[]) {
   return items.map(({ id: _localKey, ...row }) => row);
+}
+
+function mergePendingRecords(
+  remote: AttendanceRecord[],
+  pending: PendingAttendanceWrite[],
+  userId: string
+): AttendanceRecord[] {
+  if (pending.length === 0) return remote;
+  const map = new Map<string, AttendanceRecord>(
+    remote.map((r) => [`${r.student_id}_${r.attendance_date}`, r])
+  );
+
+  for (const p of pending) {
+    const existing = map.get(p.id);
+    map.set(p.id, {
+      id: existing?.id || p.id,
+      user_id: existing?.user_id || userId,
+      student_id: p.student_id,
+      class_id: p.class_id,
+      attendance_date: p.attendance_date,
+      status: p.status,
+      note: p.note,
+      created_at: existing?.created_at || p.updated_at,
+      updated_at: p.updated_at,
+    });
+  }
+
+  return Array.from(map.values());
 }
 
 export const attendanceService = {
@@ -27,61 +54,58 @@ export const attendanceService = {
     classId: string;
     date: string;
   }): Promise<AttendanceRecord[]> {
-    if (!isSupabaseConfigured) {
-      return getLocalAttendance().filter(
-        (r) =>
-          (r.user_id === params.userId || params.userId.startsWith('demo_')) &&
-          r.class_id === params.classId &&
-          r.attendance_date === params.date
-      );
+    ensureConfigured();
+    const pendingAll = await getAllPendingAttendance();
+    const pendingMatching = pendingAll.filter(
+      (p) => p.class_id === params.classId && p.attendance_date === params.date
+    );
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return mergePendingRecords([], pendingMatching, params.userId);
     }
 
-    const { data, error } = await supabase
-      .from('attendance_records')
-      .select('*')
-      .eq('user_id', params.userId)
-      .eq('class_id', params.classId)
-      .eq('attendance_date', params.date);
+    try {
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .select('id, user_id, student_id, class_id, attendance_date, status, note, created_at, updated_at')
+        .eq('user_id', params.userId)
+        .eq('class_id', params.classId)
+        .eq('attendance_date', params.date);
 
-    if (error) throw error;
-    return data || [];
+      if (error) throw error;
+      return mergePendingRecords(data || [], pendingMatching, params.userId);
+    } catch (err) {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return mergePendingRecords([], pendingMatching, params.userId);
+      }
+      throw err;
+    }
   },
 
   async getAttendanceForUserDate(userId: string, date: string): Promise<AttendanceRecord[]> {
-    if (!isSupabaseConfigured) {
-      return getLocalAttendance().filter(
-        (r) =>
-          (r.user_id === userId || userId.startsWith('demo_')) &&
-          r.attendance_date === date
-      );
+    ensureConfigured();
+    const pendingAll = await getAllPendingAttendance();
+    const pendingMatching = pendingAll.filter((p) => p.attendance_date === date);
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return mergePendingRecords([], pendingMatching, userId);
     }
 
-    const { data, error } = await supabase
-      .from('attendance_records')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('attendance_date', date);
+    try {
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .select('id, user_id, student_id, class_id, attendance_date, status, note, created_at, updated_at')
+        .eq('user_id', userId)
+        .eq('attendance_date', date);
 
-    if (error) throw error;
-    return data || [];
-  },
-
-  async getAllAttendanceForUser(userId: string): Promise<AttendanceRecord[]> {
-    if (!isSupabaseConfigured) {
-      return getLocalAttendance().filter(
-        (r) => r.user_id === userId || userId.startsWith('demo_')
-      );
+      if (error) throw error;
+      return mergePendingRecords(data || [], pendingMatching, userId);
+    } catch (err) {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return mergePendingRecords([], pendingMatching, userId);
+      }
+      throw err;
     }
-
-    const { data, error } = await supabase
-      .from('attendance_records')
-      .select('*')
-      .eq('user_id', userId)
-      .order('attendance_date', { ascending: false })
-      .limit(500);
-
-    if (error) throw error;
-    return data || [];
   },
 
   async getAttendanceForRange(params: {
@@ -90,64 +114,63 @@ export const attendanceService = {
     startDate: string;
     endDate: string;
   }): Promise<AttendanceRecord[]> {
-    if (!isSupabaseConfigured) {
-      return getLocalAttendance().filter(
-        (r) =>
-          (r.user_id === params.userId || params.userId.startsWith('demo_')) &&
-          r.class_id === params.classId &&
-          r.attendance_date >= params.startDate &&
-          r.attendance_date <= params.endDate
-      );
+    ensureConfigured();
+    const pendingAll = await getAllPendingAttendance();
+    const pendingMatching = pendingAll.filter(
+      (p) =>
+        p.class_id === params.classId &&
+        p.attendance_date >= params.startDate &&
+        p.attendance_date <= params.endDate
+    );
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return mergePendingRecords([], pendingMatching, params.userId);
     }
 
-    const { data, error } = await supabase
-      .from('attendance_records')
-      .select('*')
-      .eq('user_id', params.userId)
-      .eq('class_id', params.classId)
-      .gte('attendance_date', params.startDate)
-      .lte('attendance_date', params.endDate)
-      .order('attendance_date', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .select('id, user_id, student_id, class_id, attendance_date, status, note, created_at, updated_at')
+        .eq('user_id', params.userId)
+        .eq('class_id', params.classId)
+        .gte('attendance_date', params.startDate)
+        .lte('attendance_date', params.endDate)
+        .order('attendance_date', { ascending: false });
 
-    if (error) throw error;
-    return data || [];
+      if (error) throw error;
+      return mergePendingRecords(data || [], pendingMatching, params.userId);
+    } catch (err) {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return mergePendingRecords([], pendingMatching, params.userId);
+      }
+      throw err;
+    }
   },
 
   async saveAttendance(
     records: {
-      userId: string;
       classId: string;
       studentId: string;
       attendanceDate: string;
-      statusId: string;
+      status: AttendanceStatusKey;
       note?: string;
     }[]
   ): Promise<{ queuedOffline: boolean; count: number }> {
+    ensureConfigured();
+
     const now = new Date().toISOString();
     const rowsToQueue: PendingAttendanceWrite[] = records.map((r) => ({
       id: `${r.studentId}_${r.attendanceDate}`,
-      user_id: r.userId,
       class_id: r.classId,
       student_id: r.studentId,
       attendance_date: r.attendanceDate,
-      status_id: r.statusId,
-      note: r.note || null,
+      status: r.status,
+      note: r.note?.trim() ? r.note.trim() : null,
       updated_at: now,
     }));
 
-    if (!navigator.onLine || !isSupabaseConfigured) {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
       await enqueueAttendance(rowsToQueue);
-
-      const local = getLocalAttendance();
-      const map = new Map(local.map((item) => [`${item.student_id}_${item.attendance_date}`, item]));
-      rowsToQueue.forEach((item) => {
-        map.set(item.id, {
-          ...item,
-          created_at: now,
-        });
-      });
-      saveLocalAttendance(Array.from(map.values()));
-
       return { queuedOffline: true, count: rowsToQueue.length };
     }
 
@@ -160,16 +183,33 @@ export const attendanceService = {
 
       if (error) throw error;
 
+      // Clear any matching pending records that just synced cleanly
+      await clearSyncedAttendance(rowsToQueue.map((r) => r.id));
+
       return { queuedOffline: false, count: rowsToQueue.length };
-    } catch (err) {
-      console.warn('Network error saving attendance, queuing offline:', err);
-      await enqueueAttendance(rowsToQueue);
-      return { queuedOffline: true, count: rowsToQueue.length };
+    } catch (err: any) {
+      // Queue offline if network/connectivity failure
+      const isNetworkErr =
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        err instanceof TypeError ||
+        /fetch|network|offline/i.test(err?.message || '');
+
+      if (isNetworkErr) {
+        await enqueueAttendance(rowsToQueue);
+        return { queuedOffline: true, count: rowsToQueue.length };
+      }
+      throw err;
     }
   },
 
   async flushOfflineQueue(): Promise<number> {
-    if (!navigator.onLine || !isSupabaseConfigured) return 0;
+    if (
+      !isSupabaseConfigured ||
+      !supabase ||
+      (typeof navigator !== 'undefined' && !navigator.onLine)
+    ) {
+      return 0;
+    }
 
     const pending = await getAllPendingAttendance();
     if (pending.length === 0) return 0;

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import { Input } from '../../components/ui/Input';
@@ -18,8 +18,8 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const LoginPage: React.FC = () => {
-  const { signIn } = useAuth();
-  const { appSettings } = useSettings();
+  const { user, loading, signIn } = useAuth();
+  const { effectiveAppName } = useSettings();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -36,11 +36,15 @@ export const LoginPage: React.FC = () => {
     },
   });
 
+  if (!loading && user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   const onSubmit = async (values: LoginFormValues) => {
     try {
       setServerError(null);
       await signIn(values.email, values.password);
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (err: any) {
       setServerError(err.message || 'Failed to sign in. Please check your credentials.');
     }
@@ -51,18 +55,10 @@ export const LoginPage: React.FC = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center text-white mx-auto shadow-md mb-3 overflow-hidden">
-            {appSettings.logo_url ? (
-              <img
-                src={appSettings.logo_url}
-                alt={appSettings.app_name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <BookOpenCheck className="w-8 h-8" />
-            )}
+            <BookOpenCheck className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-extrabold text-[var(--color-text)]">
-            {appSettings.app_name || 'Hazri Book'} • حاضری بک
+            {effectiveAppName || 'Hazri Book'} • حاضری بک
           </h1>
           <p className="text-sm text-[var(--color-muted)] mt-1">{t('tagline')}</p>
         </div>
@@ -83,7 +79,7 @@ export const LoginPage: React.FC = () => {
             <Input
               label={t('auth.email')}
               type="email"
-              placeholder="you@example.com"
+              placeholder="teacher@school.com"
               error={errors.email?.message}
               {...register('email')}
             />
@@ -109,15 +105,6 @@ export const LoginPage: React.FC = () => {
               {t('auth.login')}
             </Button>
           </form>
-
-          <div className="mt-5 text-center">
-            <p className="text-sm text-[var(--color-muted)]">
-              {t('auth.no_account')}{' '}
-              <Link to="/signup" className="font-bold text-primary hover:underline">
-                {t('auth.signup')}
-              </Link>
-            </p>
-          </div>
         </div>
       </div>
     </div>

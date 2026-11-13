@@ -2,16 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useClasses } from '../../hooks/useClasses';
 import { useStudents } from '../../hooks/useStudents';
-import { useStatuses } from '../../hooks/useStatuses';
 import { useAttendance } from '../../hooks/useAttendance';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
+import { FIXED_STATUSES, FIXED_STATUS_MAP } from '../../lib/statuses';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { buildWhatsAppLink } from '../../lib/whatsapp';
-import type { Student } from '../../types/database';
+import type { AttendanceStatusKey, Student } from '../../types/database';
 import {
   Calendar,
   ChevronLeft,
@@ -33,9 +33,7 @@ export const AttendancePage: React.FC = () => {
   const { effectiveLanguage, effectiveAppName, effectiveMessageTemplate } = useSettings();
   const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { classes, isLoading: classesLoading, isReadOnly } = useClasses();
-
-  const activeClasses = classes.filter((c) => !c.is_archived);
+  const { classes, isLoading: classesLoading } = useClasses();
 
   const urlClassId = searchParams.get('classId') || '';
   const [selectedClassId, setSelectedClassId] = useState<string>(urlClassId);
@@ -44,27 +42,24 @@ export const AttendancePage: React.FC = () => {
   );
 
   useEffect(() => {
-    if (urlClassId && activeClasses.some((c) => c.id === urlClassId)) {
+    if (urlClassId && classes.some((c) => c.id === urlClassId)) {
       setSelectedClassId(urlClassId);
     } else if (
-      (!selectedClassId || !activeClasses.some((c) => c.id === selectedClassId)) &&
-      activeClasses.length > 0
+      (!selectedClassId || !classes.some((c) => c.id === selectedClassId)) &&
+      classes.length > 0
     ) {
-      setSelectedClassId(activeClasses[0].id);
+      setSelectedClassId(classes[0].id);
     }
-  }, [activeClasses, selectedClassId, urlClassId]);
+  }, [classes, selectedClassId, urlClassId]);
 
   const { students, isLoading: studentsLoading } = useStudents(selectedClassId);
-  const activeStudents = students.filter((s) => !s.is_archived);
-
-  const { statuses, isLoading: statusesLoading } = useStatuses();
   const { records, isLoading: recordsLoading, saveAttendance } = useAttendance(
     selectedClassId,
     selectedDate
   );
 
   const [pendingMarks, setPendingMarks] = useState<
-    Record<string, { statusId: string; note: string }>
+    Record<string, { status: AttendanceStatusKey; note: string }>
   >({});
   const [isSaving, setIsSaving] = useState(false);
   const [notifyList, setNotifyList] = useState<
@@ -78,9 +73,6 @@ export const AttendancePage: React.FC = () => {
     statusName: string;
   } | null>(null);
 
-  const defaultPresentStatus =
-    statuses.find((s) => s.key === 'present') || statuses[0];
-
   const shiftDate = (days: number) => {
     const current = new Date(selectedDate);
     current.setDate(current.getDate() + days);
@@ -89,13 +81,13 @@ export const AttendancePage: React.FC = () => {
     setNotifyList(null);
   };
 
-  const getStudentStatusId = (studentId: string): string => {
-    if (pendingMarks[studentId]?.statusId) {
-      return pendingMarks[studentId].statusId;
+  const getStudentStatus = (studentId: string): AttendanceStatusKey => {
+    if (pendingMarks[studentId]?.status) {
+      return pendingMarks[studentId].status;
     }
     const saved = records.find((r) => r.student_id === studentId);
-    if (saved) return saved.status_id;
-    return defaultPresentStatus?.id || '';
+    if (saved) return saved.status;
+    return 'present';
   };
 
   const getStudentNote = (studentId: string): string => {
@@ -106,23 +98,21 @@ export const AttendancePage: React.FC = () => {
     return saved?.note || '';
   };
 
-  const setStudentStatus = (studentId: string, statusId: string) => {
-    if (isReadOnly) return;
+  const setStudentStatus = (studentId: string, status: AttendanceStatusKey) => {
     setPendingMarks((prev) => ({
       ...prev,
       [studentId]: {
-        statusId,
+        status,
         note: prev[studentId]?.note ?? getStudentNote(studentId),
       },
     }));
   };
 
   const handleMarkAllPresent = () => {
-    if (isReadOnly || !defaultPresentStatus) return;
-    const newMarks: Record<string, { statusId: string; note: string }> = {};
-    activeStudents.forEach((s) => {
+    const newMarks: Record<string, { status: AttendanceStatusKey; note: string }> = {};
+    students.forEach((s) => {
       newMarks[s.id] = {
-        statusId: defaultPresentStatus.id,
+        status: 'present',
         note: pendingMarks[s.id]?.note ?? getStudentNote(s.id),
       };
     });
@@ -130,12 +120,12 @@ export const AttendancePage: React.FC = () => {
   };
 
   const handleSaveAttendance = async () => {
-    if (isReadOnly || !selectedClassId || activeStudents.length === 0) return;
+    if (!selectedClassId || students.length === 0) return;
     setIsSaving(true);
     try {
-      const recordsToSave = activeStudents.map((s) => ({
+      const recordsToSave = students.map((s) => ({
         studentId: s.id,
-        statusId: getStudentStatusId(s.id),
+        status: getStudentStatus(s.id),
         note: getStudentNote(s.id),
       }));
 
@@ -147,12 +137,11 @@ export const AttendancePage: React.FC = () => {
         res.queuedOffline ? 'info' : 'success'
       );
 
-      const statusMap = new Map(statuses.map((st) => [st.id, st]));
       const toNotify = recordsToSave
         .map((r) => {
-          const st = statusMap.get(r.statusId);
-          const student = activeStudents.find((s) => s.id === r.studentId);
-          if (!st || !student || !st.notify_parents) return null;
+          const st = FIXED_STATUS_MAP[r.status];
+          const student = students.find((s) => s.id === r.studentId);
+          if (!st || !student || !st.notifyOnAbsent) return null;
           return {
             student,
             statusName: effectiveLanguage === 'ur' ? st.label_ur : st.label_en,
@@ -172,8 +161,8 @@ export const AttendancePage: React.FC = () => {
     }
   };
 
-  const currentClass = activeClasses.find((c) => c.id === selectedClassId);
-  const isInitialLoading = classesLoading || studentsLoading || statusesLoading || recordsLoading;
+  const currentClass = classes.find((c) => c.id === selectedClassId);
+  const isInitialLoading = classesLoading || studentsLoading || recordsLoading;
 
   return (
     <div className="space-y-4">
@@ -185,9 +174,9 @@ export const AttendancePage: React.FC = () => {
 
       {/* Top Controls: Class Selector & Date Navigation */}
       <div className="bg-[var(--color-surface)] rounded-2xl shadow-sm border border-[var(--color-border)] p-4 space-y-3">
-        {activeClasses.length > 0 ? (
+        {classes.length > 0 ? (
           <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            {activeClasses.map((cls) => {
+            {classes.map((cls) => {
               const isSelected = cls.id === selectedClassId;
               return (
                 <button
@@ -214,7 +203,7 @@ export const AttendancePage: React.FC = () => {
         ) : (
           <div className="text-sm text-[var(--color-muted)] py-1 flex items-center gap-2">
             <School className="w-4 h-4 text-primary" />
-            <span>No active classes found. Create one in Classes first.</span>
+            <span>No classes found. Create one in Classes first.</span>
           </div>
         )}
 
@@ -257,7 +246,7 @@ export const AttendancePage: React.FC = () => {
             </button>
           </div>
 
-          {!isReadOnly && activeStudents.length > 0 && (
+          {students.length > 0 && (
             <Button
               variant="outline"
               size="md"
@@ -315,7 +304,6 @@ export const AttendancePage: React.FC = () => {
                     </span>
                   </div>
                   <p className="text-xs text-[var(--color-muted)] font-mono mt-0.5">
-                    {student.parent_name ? `${student.parent_name} • ` : ''}
                     {student.parent_phone || 'No parent phone'}
                   </p>
                 </div>
@@ -357,7 +345,7 @@ export const AttendancePage: React.FC = () => {
       {/* Single-Column Scroll-Friendly Students Attendance List */}
       {isInitialLoading ? (
         <SkeletonCard count={4} />
-      ) : activeStudents.length === 0 ? (
+      ) : students.length === 0 ? (
         <EmptyState
           variant="attendance"
           title={t('attendance.no_students')}
@@ -370,10 +358,10 @@ export const AttendancePage: React.FC = () => {
         />
       ) : (
         <div className="space-y-3">
-          {activeStudents.map((student) => {
-            const currentStatusId = getStudentStatusId(student.id);
+          {students.map((student) => {
+            const currentStatus = getStudentStatus(student.id);
             const currentNote = getStudentNote(student.id);
-            const activeStatus = statuses.find((s) => s.id === currentStatusId);
+            const activeStatus = FIXED_STATUS_MAP[currentStatus];
 
             return (
               <div
@@ -394,7 +382,6 @@ export const AttendancePage: React.FC = () => {
                       </h3>
                       {student.parent_phone && (
                         <p className="text-xs text-[var(--color-muted)] font-mono truncate">
-                          {student.parent_name ? `${student.parent_name} • ` : ''}
                           {student.parent_phone}
                         </p>
                       )}
@@ -407,8 +394,8 @@ export const AttendancePage: React.FC = () => {
                       onClick={() => {
                         const statusLabel =
                           effectiveLanguage === 'ur'
-                            ? activeStatus?.label_ur || 'غائب'
-                            : activeStatus?.label_en || 'Absent';
+                            ? activeStatus.label_ur
+                            : activeStatus.label_en;
                         setWhatsAppStudent({ student, statusName: statusLabel });
                       }}
                       aria-label={`${t('attendance.notify_parent')} (${student.name})`}
@@ -444,22 +431,20 @@ export const AttendancePage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Status Segmented Chip Buttons (min 44px height, selected = filled, text + color) */}
+                {/* Fixed Status Segmented Chip Buttons (English + Urdu labels) */}
                 <div
                   role="group"
                   aria-label={`Attendance status for ${student.name}`}
                   className="grid grid-cols-2 sm:grid-cols-4 gap-2"
                 >
-                  {statuses.map((st) => {
-                    const isSelected = st.id === currentStatusId;
-                    const label = effectiveLanguage === 'ur' ? st.label_ur : st.label_en;
+                  {FIXED_STATUSES.map((st) => {
+                    const isSelected = st.key === currentStatus;
 
                     return (
                       <button
-                        key={st.id}
+                        key={st.key}
                         type="button"
-                        onClick={() => setStudentStatus(student.id, st.id)}
-                        disabled={isReadOnly}
+                        onClick={() => setStudentStatus(student.id, st.key)}
                         aria-pressed={isSelected}
                         className={`min-h-[44px] px-2.5 py-2 text-xs sm:text-sm font-bold rounded-xl border transition-all duration-150 active:scale-[0.97] flex items-center justify-center gap-1.5 ${
                           isSelected ? 'text-white shadow-sm' : 'hover:opacity-90'
@@ -479,7 +464,9 @@ export const AttendancePage: React.FC = () => {
                             aria-hidden="true"
                           />
                         )}
-                        <span className="truncate">{label}</span>
+                        <span className="truncate">
+                          {st.label_en} • {st.label_ur}
+                        </span>
                       </button>
                     );
                   })}
@@ -491,7 +478,7 @@ export const AttendancePage: React.FC = () => {
       )}
 
       {/* Sticky Save Action Bar at Bottom */}
-      {!isReadOnly && activeStudents.length > 0 && (
+      {students.length > 0 && (
         <div className="sticky bottom-[68px] sm:bottom-5 z-20 pt-2">
           <div className="bg-[var(--color-surface)]/90 backdrop-blur-md p-2 rounded-2xl border border-[var(--color-border)] shadow-lg">
             <Button
@@ -533,7 +520,7 @@ export const AttendancePage: React.FC = () => {
                   setPendingMarks((prev) => ({
                     ...prev,
                     [noteStudent.id]: {
-                      statusId: getStudentStatusId(noteStudent.id),
+                      status: getStudentStatus(noteStudent.id),
                       note: tempNoteText,
                     },
                   }));
@@ -556,8 +543,7 @@ export const AttendancePage: React.FC = () => {
         >
           <div className="space-y-4 text-sm">
             <p className="font-semibold text-[var(--color-text)]">
-              Recipient: {whatsAppStudent.student.parent_name || 'Parent'} (
-              {whatsAppStudent.student.parent_phone || 'No phone'})
+              Recipient: Parent ({whatsAppStudent.student.parent_phone || 'No phone'})
             </p>
 
             <div className="p-3.5 bg-slate-50 dark:bg-slate-800/70 rounded-xl border border-[var(--color-border)] text-[var(--color-text)] leading-relaxed">

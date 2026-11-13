@@ -18,9 +18,6 @@ import {
   Edit2,
   Trash2,
   Phone,
-  User,
-  Archive,
-  ArchiveRestore,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -40,16 +37,13 @@ export const StudentsPage: React.FC = () => {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { classes } = useClasses();
-  const activeClasses = classes.filter((c) => !c.is_archived);
 
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all');
-  const [statusTab, setStatusTab] = useState<'active' | 'archived'>('active');
   const [searchQuery, setSearchQuery] = useState('');
 
   const {
     students,
     isLoading,
-    isReadOnly,
     createStudent,
     bulkCreateStudents,
     updateStudent,
@@ -64,41 +58,31 @@ export const StudentsPage: React.FC = () => {
   const [formName, setFormName] = useState('');
   const [formRoll, setFormRoll] = useState('');
   const [formClassId, setFormClassId] = useState('');
-  const [formParentName, setFormParentName] = useState('');
   const [formParentPhone, setFormParentPhone] = useState('');
   const [formPhoneError, setFormPhoneError] = useState<string | undefined>(undefined);
-  const [formNotes, setFormNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [bulkClassId, setBulkClassId] = useState('');
   const [bulkText, setBulkText] = useState('');
   const [bulkResult, setBulkResult] = useState<number | null>(null);
 
-  const activeStudentsCount = students.filter((s) => !s.is_archived).length;
-  const archivedStudentsCount = students.filter((s) => s.is_archived).length;
-
-  const filteredStudents = students
-    .filter((s) => (statusTab === 'active' ? !s.is_archived : s.is_archived))
-    .filter((s) => {
-      const q = searchQuery.toLowerCase().trim();
-      if (!q) return true;
-      return (
-        s.name.toLowerCase().includes(q) ||
-        (s.roll_no && s.roll_no.toLowerCase().includes(q)) ||
-        (s.parent_name && s.parent_name.toLowerCase().includes(q))
-      );
-    });
+  const filteredStudents = students.filter((s) => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      s.name.toLowerCase().includes(q) ||
+      (s.roll_no && s.roll_no.toLowerCase().includes(q))
+    );
+  });
 
   const handleOpenAdd = () => {
     setFormName('');
     setFormRoll('');
     setFormClassId(
-      selectedClassFilter !== 'all' ? selectedClassFilter : activeClasses[0]?.id || ''
+      selectedClassFilter !== 'all' ? selectedClassFilter : classes[0]?.id || ''
     );
-    setFormParentName('');
     setFormParentPhone('');
     setFormPhoneError(undefined);
-    setFormNotes('');
     setIsAddModalOpen(true);
   };
 
@@ -107,10 +91,8 @@ export const StudentsPage: React.FC = () => {
     setFormName(s.name);
     setFormRoll(s.roll_no || '');
     setFormClassId(s.class_id);
-    setFormParentName(s.parent_name || '');
     setFormParentPhone(s.parent_phone || '');
     setFormPhoneError(undefined);
-    setFormNotes(s.notes || '');
   };
 
   const handleSaveStudent = async (e: React.FormEvent) => {
@@ -137,9 +119,7 @@ export const StudentsPage: React.FC = () => {
             class_id: formClassId,
             name: formName.trim(),
             roll_no: formRoll.trim() || null,
-            parent_name: formParentName.trim() || null,
             parent_phone: normalizedPhone || null,
-            notes: formNotes.trim() || null,
           },
         });
         setEditingStudent(null);
@@ -149,9 +129,7 @@ export const StudentsPage: React.FC = () => {
           classId: formClassId,
           name: formName.trim(),
           rollNo: formRoll.trim() || undefined,
-          parentName: formParentName.trim() || undefined,
           parentPhone: normalizedPhone || undefined,
-          notes: formNotes.trim() || undefined,
         });
         setIsAddModalOpen(false);
         showToast('Student added!', 'success');
@@ -187,18 +165,6 @@ export const StudentsPage: React.FC = () => {
     }
   };
 
-  const handleToggleArchive = async (s: Student) => {
-    try {
-      await updateStudent({
-        id: s.id,
-        updates: { is_archived: !s.is_archived },
-      });
-      showToast(s.is_archived ? 'Student restored' : 'Student archived', 'info');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to update student', 'error');
-    }
-  };
-
   return (
     <div className="space-y-4">
       {/* Header & Actions */}
@@ -212,57 +178,29 @@ export const StudentsPage: React.FC = () => {
           </p>
         </div>
 
-        {!isReadOnly && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="md"
-              onClick={() => {
-                setBulkClassId(
-                  selectedClassFilter !== 'all'
-                    ? selectedClassFilter
-                    : activeClasses[0]?.id || ''
-                );
-                setIsBulkModalOpen(true);
-              }}
-              className="gap-1.5"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-[#16A34A]" />
-              <span>{t('students.bulk_add')}</span>
-            </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => {
+              setBulkClassId(
+                selectedClassFilter !== 'all'
+                  ? selectedClassFilter
+                  : classes[0]?.id || ''
+              );
+              setIsBulkModalOpen(true);
+            }}
+            className="gap-1.5"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-[#16A34A]" />
+            <span>{t('students.bulk_add')}</span>
+          </Button>
 
-            <Button onClick={handleOpenAdd} size="md" className="gap-1.5 shadow-sm">
-              <Plus className="w-4 h-4" />
-              <span>{t('students.add_student')}</span>
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Active / Archived Tabs */}
-      <div className="flex gap-2 border-b border-[var(--color-border)]">
-        <button
-          type="button"
-          onClick={() => setStatusTab('active')}
-          className={`min-h-[44px] px-4 text-sm font-bold transition-all border-b-2 ${
-            statusTab === 'active'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-[var(--color-muted)] hover:text-[var(--color-text)]'
-          }`}
-        >
-          {t('students.active')} ({activeStudentsCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => setStatusTab('archived')}
-          className={`min-h-[44px] px-4 text-sm font-bold transition-all border-b-2 ${
-            statusTab === 'archived'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-[var(--color-muted)] hover:text-[var(--color-text)]'
-          }`}
-        >
-          {t('students.archived')} ({archivedStudentsCount})
-        </button>
+          <Button onClick={handleOpenAdd} size="md" className="gap-1.5 shadow-sm">
+            <Plus className="w-4 h-4" />
+            <span>{t('students.add_student')}</span>
+          </Button>
+        </div>
       </div>
 
       {/* Filter Chips and Search Bar */}
@@ -279,7 +217,7 @@ export const StudentsPage: React.FC = () => {
           />
         </div>
 
-        {activeClasses.length > 0 && (
+        {classes.length > 0 && (
           <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-2 border-t border-[var(--color-border)]">
             <button
               type="button"
@@ -292,7 +230,7 @@ export const StudentsPage: React.FC = () => {
             >
               {t('students.all_classes')}
             </button>
-            {activeClasses.map((cls) => {
+            {classes.map((cls) => {
               const isSelected = selectedClassFilter === cls.id;
               return (
                 <button
@@ -323,12 +261,10 @@ export const StudentsPage: React.FC = () => {
           description={
             searchQuery
               ? `No student matching "${searchQuery}".`
-              : statusTab === 'archived'
-              ? 'Archived students will appear here.'
               : 'Add students to this class or use Bulk Add to paste a list.'
           }
           action={
-            !isReadOnly && statusTab === 'active' ? (
+            classes.length > 0 ? (
               <Button onClick={handleOpenAdd}>{t('students.add_student')}</Button>
             ) : undefined
           }
@@ -365,20 +301,11 @@ export const StudentsPage: React.FC = () => {
                   </div>
 
                   <div className="space-y-1 text-xs text-[var(--color-muted)] mb-3">
-                    {s.parent_name && (
-                      <div className="flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 shrink-0" />
-                        <span>Parent: {s.parent_name}</span>
-                      </div>
-                    )}
                     {s.parent_phone && (
                       <div className="flex items-center gap-1.5 font-mono">
                         <Phone className="w-3.5 h-3.5 shrink-0" />
                         <span>{s.parent_phone}</span>
                       </div>
-                    )}
-                    {s.notes && (
-                      <p className="italic line-clamp-1 pt-0.5">{s.notes}</p>
                     )}
                   </div>
                 </div>
@@ -398,41 +325,26 @@ export const StudentsPage: React.FC = () => {
                     <span className="text-xs text-[var(--color-muted)]">No Phone</span>
                   )}
 
-                  {!isReadOnly && (
-                    <div className="flex items-center gap-0.5">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEdit(s)}
-                        aria-label={`Edit ${s.name}`}
-                        title="Edit"
-                        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleArchive(s)}
-                        aria-label={s.is_archived ? t('students.unarchive') : t('students.archive')}
-                        title={s.is_archived ? t('students.unarchive') : t('students.archive')}
-                        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-[var(--color-muted)] hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"
-                      >
-                        {s.is_archived ? (
-                          <ArchiveRestore className="w-4 h-4" />
-                        ) : (
-                          <Archive className="w-4 h-4" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeletingStudent(s)}
-                        aria-label={`Delete ${s.name}`}
-                        title="Delete"
-                        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-[var(--color-muted)] hover:text-[#DC2626] hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(s)}
+                      aria-label={`Edit ${s.name}`}
+                      title="Edit"
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeletingStudent(s)}
+                      aria-label={`Delete ${s.name}`}
+                      title="Delete"
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-[var(--color-muted)] hover:text-[#DC2626] hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -464,7 +376,7 @@ export const StudentsPage: React.FC = () => {
               className="w-full min-h-[44px] px-3.5 py-2.5 text-sm rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-primary"
               required
             >
-              {activeClasses.map((c) => (
+              {classes.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -489,13 +401,6 @@ export const StudentsPage: React.FC = () => {
           />
 
           <Input
-            label={t('students.parent_name')}
-            placeholder="Father / Guardian Name"
-            value={formParentName}
-            onChange={(e) => setFormParentName(e.target.value)}
-          />
-
-          <Input
             label={t('students.parent_phone')}
             placeholder="e.g. 923001234567"
             value={formParentPhone}
@@ -505,13 +410,6 @@ export const StudentsPage: React.FC = () => {
             }}
             error={formPhoneError}
             helperText="Include country code without + or spaces for WhatsApp"
-          />
-
-          <Input
-            label={t('students.notes')}
-            placeholder="Medical history, bus route, remarks"
-            value={formNotes}
-            onChange={(e) => setFormNotes(e.target.value)}
           />
 
           <div className="flex justify-end gap-2 pt-2">
@@ -553,7 +451,7 @@ export const StudentsPage: React.FC = () => {
               className="w-full min-h-[44px] px-3.5 py-2.5 text-sm rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-primary"
               required
             >
-              {activeClasses.map((c) => (
+              {classes.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -620,8 +518,13 @@ export const StudentsPage: React.FC = () => {
               <Button
                 variant="danger"
                 onClick={async () => {
-                  await deleteStudent(deletingStudent.id);
-                  setDeletingStudent(null);
+                  try {
+                    await deleteStudent(deletingStudent.id);
+                    showToast('Student deleted', 'info');
+                    setDeletingStudent(null);
+                  } catch (err: any) {
+                    showToast(err.message || 'Failed to delete student', 'error');
+                  }
                 }}
               >
                 Delete Student

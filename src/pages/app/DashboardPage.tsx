@@ -3,8 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useClasses } from '../../hooks/useClasses';
 import { useStudents } from '../../hooks/useStudents';
-import { useStatuses } from '../../hooks/useStatuses';
 import { useUserAttendanceForDate } from '../../hooks/useAttendance';
+import { isPresentStatus } from '../../lib/statuses';
 import { StatCard } from '../../components/ui/StatCard';
 import { Button } from '../../components/ui/Button';
 import { SkeletonCard } from '../../components/ui/Skeleton';
@@ -26,30 +26,19 @@ import { useTranslation } from 'react-i18next';
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, inspectedUser } = useAuth();
-  const displayName =
-    inspectedUser?.full_name || user?.full_name || user?.email || 'Educator';
+  const { user } = useAuth();
+  const displayName = user?.full_name || user?.email || 'Teacher';
 
   const today = new Date().toISOString().split('T')[0];
   const { classes, isLoading: classesLoading } = useClasses();
   const { students, isLoading: studentsLoading } = useStudents();
-  const { statuses } = useStatuses();
   const { records: todayRecords, isLoading: attendanceLoading } =
     useUserAttendanceForDate(today);
 
-  const activeClasses = classes.filter((c) => !c.is_archived);
-  const activeStudents = students.filter((s) => !s.is_archived);
   const isLoading = classesLoading || studentsLoading || attendanceLoading;
 
-  const presentStatusIds = new Set(
-    statuses.filter((s) => s.counts_as_present).map((s) => s.id)
-  );
-  const statusMap = new Map(statuses.map((s) => [s.id, s]));
-
-  const presentToday = todayRecords.filter((r) => presentStatusIds.has(r.status_id)).length;
-  const absentToday = todayRecords.filter(
-    (r) => statusMap.get(r.status_id)?.key === 'absent'
-  ).length;
+  const presentToday = todayRecords.filter((r) => isPresentStatus(r.status)).length;
+  const absentToday = todayRecords.filter((r) => r.status === 'absent').length;
   const markedClassIds = new Set(todayRecords.map((r) => r.class_id));
 
   return (
@@ -78,8 +67,8 @@ export const DashboardPage: React.FC = () => {
         </Button>
       </div>
 
-      {/* Onboarding Banner when user has no classes yet */}
-      {!classesLoading && activeClasses.length === 0 && (
+      {/* Onboarding Banner when teacher has no classes yet */}
+      {!classesLoading && classes.length === 0 && (
         <div className="bg-primary/5 dark:bg-primary/15 rounded-3xl border border-primary/20 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
             <div className="w-11 h-11 rounded-2xl bg-primary text-white flex items-center justify-center shrink-0">
@@ -105,7 +94,7 @@ export const DashboardPage: React.FC = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         <StatCard
           title={t('dashboard.total_students')}
-          value={activeStudents.length}
+          value={students.length}
           colorHex="#2563EB"
           icon={<Users className="w-4 h-4" />}
         />
@@ -123,7 +112,7 @@ export const DashboardPage: React.FC = () => {
         />
         <StatCard
           title={t('dashboard.marked_classes')}
-          value={`${markedClassIds.size}/${activeClasses.length}`}
+          value={`${markedClassIds.size}/${classes.length}`}
           colorHex="#7C3AED"
           icon={<CalendarCheck className="w-4 h-4" />}
         />
@@ -145,15 +134,13 @@ export const DashboardPage: React.FC = () => {
 
         {isLoading ? (
           <SkeletonCard count={2} />
-        ) : activeClasses.length === 0 ? null : (
+        ) : classes.length === 0 ? null : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {activeClasses.map((cls) => {
-              const clsStudents = activeStudents.filter((s) => s.class_id === cls.id);
+            {classes.map((cls) => {
+              const clsStudents = students.filter((s) => s.class_id === cls.id);
               const clsRecords = todayRecords.filter((r) => r.class_id === cls.id);
-              const clsPresent = clsRecords.filter((r) => presentStatusIds.has(r.status_id)).length;
-              const clsAbsent = clsRecords.filter(
-                (r) => statusMap.get(r.status_id)?.key === 'absent'
-              ).length;
+              const clsPresent = clsRecords.filter((r) => isPresentStatus(r.status)).length;
+              const clsAbsent = clsRecords.filter((r) => r.status === 'absent').length;
               const isMarked = clsRecords.length > 0;
 
               return (

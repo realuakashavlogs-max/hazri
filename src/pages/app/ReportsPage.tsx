@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useClasses } from '../../hooks/useClasses';
 import { useStudents } from '../../hooks/useStudents';
-import { useStatuses } from '../../hooks/useStatuses';
 import { useAttendanceRange } from '../../hooks/useAttendance';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
+import { isPresentStatus } from '../../lib/statuses';
 import { Button } from '../../components/ui/Button';
 import { StatCard } from '../../components/ui/StatCard';
 import { SkeletonCard } from '../../components/ui/Skeleton';
@@ -25,7 +25,6 @@ export const ReportsPage: React.FC = () => {
   const { effectiveAppName } = useSettings();
   const { showToast } = useToast();
   const { classes } = useClasses();
-  const activeClasses = classes.filter((c) => !c.is_archived);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const monthStartStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
@@ -39,10 +38,10 @@ export const ReportsPage: React.FC = () => {
   const [customEnd, setCustomEnd] = useState<string>(todayStr);
 
   React.useEffect(() => {
-    if (!selectedClassId && activeClasses.length > 0) {
-      setSelectedClassId(activeClasses[0].id);
+    if (!selectedClassId && classes.length > 0) {
+      setSelectedClassId(classes[0].id);
     }
-  }, [activeClasses, selectedClassId]);
+  }, [classes, selectedClassId]);
 
   const getDateRange = () => {
     const today = new Date();
@@ -71,13 +70,11 @@ export const ReportsPage: React.FC = () => {
   const { start: startDate, end: endDate } = getDateRange();
 
   const { students, isLoading: studentsLoading } = useStudents(selectedClassId);
-  const activeStudents = students.filter((s) => !s.is_archived);
   const displayedStudents =
     selectedStudentId === 'all'
-      ? activeStudents
-      : activeStudents.filter((s) => s.id === selectedStudentId);
+      ? students
+      : students.filter((s) => s.id === selectedStudentId);
 
-  const { statuses } = useStatuses();
   const { records, isLoading: recordsLoading } = useAttendanceRange(
     selectedClassId,
     startDate,
@@ -89,23 +86,12 @@ export const ReportsPage: React.FC = () => {
       ? records
       : records.filter((r) => r.student_id === selectedStudentId);
 
-  const presentStatusIds = new Set(
-    statuses.filter((s) => s.counts_as_present).map((s) => s.id)
-  );
-  const statusMap = new Map(statuses.map((s) => [s.id, s]));
-
-  const currentClass = activeClasses.find((c) => c.id === selectedClassId);
+  const currentClass = classes.find((c) => c.id === selectedClassId);
 
   const totalMarks = filteredRecords.length;
-  const totalPresents = filteredRecords.filter((r) =>
-    presentStatusIds.has(r.status_id)
-  ).length;
-  const totalAbsents = filteredRecords.filter(
-    (r) => statusMap.get(r.status_id)?.key === 'absent'
-  ).length;
-  const totalLates = filteredRecords.filter(
-    (r) => statusMap.get(r.status_id)?.key === 'late'
-  ).length;
+  const totalPresents = filteredRecords.filter((r) => isPresentStatus(r.status)).length;
+  const totalAbsents = filteredRecords.filter((r) => r.status === 'absent').length;
+  const totalLates = filteredRecords.filter((r) => r.status === 'late').length;
   const overallRate = totalMarks > 0 ? ((totalPresents / totalMarks) * 100).toFixed(1) : '0';
 
   const handleExportCsv = () => {
@@ -115,7 +101,6 @@ export const ReportsPage: React.FC = () => {
       dateRange: { start: startDate, end: endDate },
       students: displayedStudents,
       records: filteredRecords,
-      statuses,
       appName: effectiveAppName,
     });
     showToast('CSV exported!', 'success');
@@ -128,7 +113,6 @@ export const ReportsPage: React.FC = () => {
       dateRange: { start: startDate, end: endDate },
       students: displayedStudents,
       records: filteredRecords,
-      statuses,
       appName: effectiveAppName,
     });
     showToast('PDF downloaded!', 'success');
@@ -164,9 +148,9 @@ export const ReportsPage: React.FC = () => {
 
       {/* Filters Card */}
       <div className="bg-[var(--color-surface)] rounded-2xl shadow-sm border border-[var(--color-border)] p-4 space-y-3">
-        {activeClasses.length > 0 && (
+        {classes.length > 0 && (
           <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            {activeClasses.map((cls) => {
+            {classes.map((cls) => {
               const isSelected = cls.id === selectedClassId;
               return (
                 <button
@@ -215,7 +199,7 @@ export const ReportsPage: React.FC = () => {
             ))}
           </div>
 
-          {activeStudents.length > 0 && (
+          {students.length > 0 && (
             <select
               value={selectedStudentId}
               onChange={(e) => setSelectedStudentId(e.target.value)}
@@ -223,7 +207,7 @@ export const ReportsPage: React.FC = () => {
               className="min-h-[44px] px-3 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="all">{t('reports.all_students')}</option>
-              {activeStudents.map((s) => (
+              {students.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.roll_no ? `#${s.roll_no} - ` : ''}
                   {s.name}
@@ -312,7 +296,7 @@ export const ReportsPage: React.FC = () => {
             <EmptyState
               variant="students"
               title="No Student Records"
-              description="No active students found in this class for the selected period."
+              description="No students found in this class for the selected period."
             />
           </div>
         ) : (
@@ -326,6 +310,7 @@ export const ReportsPage: React.FC = () => {
                     <th className="py-3 px-4 text-center">{t('reports.present')}</th>
                     <th className="py-3 px-4 text-center">{t('reports.absent')}</th>
                     <th className="py-3 px-4 text-center">{t('reports.late')}</th>
+                    <th className="py-3 px-4 text-center">{t('reports.leave')}</th>
                     <th className="py-3 px-4 text-center">{t('reports.total')}</th>
                     <th className="py-3 px-4 text-end">{t('reports.rate')}</th>
                   </tr>
@@ -334,9 +319,10 @@ export const ReportsPage: React.FC = () => {
                   {displayedStudents.map((s) => {
                     const studentRecs = filteredRecords.filter((r) => r.student_id === s.id);
                     const total = studentRecs.length;
-                    const present = studentRecs.filter((r) => presentStatusIds.has(r.status_id)).length;
-                    const absent = studentRecs.filter((r) => statusMap.get(r.status_id)?.key === 'absent').length;
-                    const late = studentRecs.filter((r) => statusMap.get(r.status_id)?.key === 'late').length;
+                    const present = studentRecs.filter((r) => isPresentStatus(r.status)).length;
+                    const absent = studentRecs.filter((r) => r.status === 'absent').length;
+                    const late = studentRecs.filter((r) => r.status === 'late').length;
+                    const leave = studentRecs.filter((r) => r.status === 'leave').length;
                     const rate = total > 0 ? (present / total) * 100 : 100;
 
                     return (
@@ -354,6 +340,7 @@ export const ReportsPage: React.FC = () => {
                         <td className="py-3 px-4 text-center font-semibold text-[#16A34A]">{present}</td>
                         <td className="py-3 px-4 text-center font-semibold text-[#DC2626]">{absent}</td>
                         <td className="py-3 px-4 text-center font-semibold text-[#F59E0B]">{late}</td>
+                        <td className="py-3 px-4 text-center font-semibold text-[#7C3AED]">{leave}</td>
                         <td className="py-3 px-4 text-center text-[var(--color-muted)]">{total}</td>
                         <td className="py-3 px-4 text-end">
                           <span
@@ -380,9 +367,10 @@ export const ReportsPage: React.FC = () => {
               {displayedStudents.map((s) => {
                 const studentRecs = filteredRecords.filter((r) => r.student_id === s.id);
                 const total = studentRecs.length;
-                const present = studentRecs.filter((r) => presentStatusIds.has(r.status_id)).length;
-                const absent = studentRecs.filter((r) => statusMap.get(r.status_id)?.key === 'absent').length;
-                const late = studentRecs.filter((r) => statusMap.get(r.status_id)?.key === 'late').length;
+                const present = studentRecs.filter((r) => isPresentStatus(r.status)).length;
+                const absent = studentRecs.filter((r) => r.status === 'absent').length;
+                const late = studentRecs.filter((r) => r.status === 'late').length;
+                const leave = studentRecs.filter((r) => r.status === 'leave').length;
                 const rate = total > 0 ? (present / total) * 100 : 100;
 
                 return (
@@ -423,7 +411,7 @@ export const ReportsPage: React.FC = () => {
                       />
                     </div>
 
-                    <div className="flex items-center gap-4 text-xs text-[var(--color-muted)]">
+                    <div className="flex items-center flex-wrap gap-3 text-xs text-[var(--color-muted)]">
                       <span className="text-[#16A34A] font-semibold">
                         {t('reports.present')}: {present}
                       </span>
@@ -432,6 +420,9 @@ export const ReportsPage: React.FC = () => {
                       </span>
                       <span className="text-[#F59E0B] font-semibold">
                         {t('reports.late')}: {late}
+                      </span>
+                      <span className="text-[#7C3AED] font-semibold">
+                        {t('reports.leave')}: {leave}
                       </span>
                       <span>
                         {t('reports.total')}: {total}

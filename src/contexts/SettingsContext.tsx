@@ -1,122 +1,81 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import type { UserSettings, AppSettings } from '../types/database';
+import { useQueryClient } from '@tanstack/react-query';
+import type { LocalSettings } from '../types/database';
 import {
   settingsService,
-  DEFAULT_APP_SETTINGS,
+  DEFAULT_LOCAL_SETTINGS,
   DEFAULT_MESSAGE_TEMPLATE,
 } from '../services/settingsService';
-import { useAuth } from './AuthContext';
 import { setAppLanguage } from '../lib/i18n';
 import { getPendingAttendanceCount } from '../lib/offlineQueue';
 import { attendanceService } from '../services/attendanceService';
+import { useAuth } from './AuthContext';
 
 interface SettingsContextType {
-  settings: UserSettings;
-  appSettings: AppSettings;
+  settings: LocalSettings;
   effectiveAppName: string;
   effectivePrimaryColor: string;
   effectiveLanguage: 'en' | 'ur';
   effectiveMessageTemplate: string;
-  updateSettings: (updates: Partial<Omit<UserSettings, 'user_id'>>) => Promise<void>;
-  refreshAppSettings: () => Promise<void>;
+  updateSettings: (updates: Partial<LocalSettings>) => void;
   toggleDarkMode: () => void;
   toggleLanguage: () => void;
   pendingOfflineCount: number;
   syncNow: () => Promise<void>;
 }
 
-const defaultUserSettings: UserSettings = {
-  user_id: '',
-  language: null,
-  primary_color: null,
-  dark_mode: false,
-  app_display_name: null,
-  message_template: null,
-  updated_at: new Date().toISOString(),
-};
-
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { effectiveUserId } = useAuth();
-  const [settings, setSettings] = useState<UserSettings>(defaultUserSettings);
-  const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [settings, setSettings] = useState<LocalSettings>(() =>
+    typeof localStorage !== 'undefined' ? settingsService.getDeviceSettings() : DEFAULT_LOCAL_SETTINGS
+  );
   const [pendingOfflineCount, setPendingOfflineCount] = useState<number>(0);
 
-  const applyTheme = useCallback((userSet: UserSettings, globalSet: AppSettings) => {
-    const primary = userSet.primary_color || globalSet.primary_color || '#2563EB';
+  const applyTheme = useCallback((next: LocalSettings) => {
+    const primary = next.primary_color || '#2563EB';
     document.documentElement.style.setProperty('--color-primary', primary);
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     if (metaTheme) metaTheme.setAttribute('content', primary);
 
-    if (userSet.dark_mode) {
+    if (next.dark_mode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
 
-    const lang = userSet.language || globalSet.default_language || 'en';
-    setAppLanguage(lang);
+    setAppLanguage(next.language || 'en');
   }, []);
 
-  const refreshAppSettings = useCallback(async () => {
-    const g = await settingsService.getAppSettings();
-    setAppSettings(g);
-    applyTheme(settings, g);
-  }, [applyTheme, settings]);
-
-  // Load global app_settings (anon readable for login/signup branding + defaults)
   useEffect(() => {
-    let mounted = true;
-    settingsService.getAppSettings().then((g) => {
-      if (!mounted) return;
-      setAppSettings(g);
-      applyTheme(settings, g);
-    });
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    applyTheme(settings);
+  }, [settings, applyTheme]);
 
-  // Load user_settings when authenticated
-  useEffect(() => {
-    if (!effectiveUserId) {
-      setSettings(defaultUserSettings);
-      return;
-    }
-
-    let mounted = true;
-    async function loadSettings() {
-      const [userData, globalData] = await Promise.all([
-        settingsService.getUserSettings(effectiveUserId),
-        settingsService.getAppSettings(),
-      ]);
-      if (!mounted) return;
-      setAppSettings(globalData);
-      setSettings(userData);
-      applyTheme(userData, globalData);
-    }
-    loadSettings();
-    return () => {
-      mounted = false;
-    };
-  }, [effectiveUserId, applyTheme]);
-
-  // Offline queue monitoring & Auto-flush on online
-  useEffect(() => {
-    async function checkQueue() {
-      const count = await getPendingAttendanceCount();
-      setPendingOfflineCount(count);
-    }
-    checkQueue();
-
-    const interval = setInterval(checkQueue, 5000);
-
-    const handleOnline = async () => {
+  const flushAndRefresh = useCallback(async () => {
+    if (user && typeof navigator !== 'undefined' && navigator.onLine) {
       const synced = await attendanceService.flushOfflineQueue();
       if (synced > 0) {
-        checkQueue();
+        queryClient.invalidateQueries({ queryKey: ['attendance'] });
+        queryClient.invalidateQueries({ queryKey: ['attendance_range'] });
+        queryClient.invalidateQueries({ queryKey: ['user_attendance_date'] });
       }
+    }
+    const count = await getPendingAttendanceCount();
+    setPendingOfflineCount(count);
+  }, [user, queryClient]);
+
+  useEffect(() => {
+    flushAndRefresh();
+
+    const interval = setInterval(async () => {
+      const count = await getPendingAttendanceCount();
+      setPendingOfflineCount(count);
+    }, 3000);
+
+    const handleOnline = () => {
+      flushAndRefresh();
     };
 
     window.addEventListener('online', handleOnline);
@@ -124,57 +83,36 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       clearInterval(interval);
       window.removeEventListener('online', handleOnline);
     };
-  }, []);
+  }, [flushAndRefresh]);
 
-  const updateSettings = async (updates: Partial<Omit<UserSettings, 'user_id'>>) => {
-    if (!effectiveUserId) return;
-    const updated = await settingsService.updateUserSettings(effectiveUserId, updates);
+  const updateSettings = (updates: Partial<LocalSettings>) => {
+    const updated = settingsService.saveDeviceSettings(updates);
     setSettings(updated);
-    applyTheme(updated, appSettings);
+    applyTheme(updated);
   };
-
-  const effectiveLanguage: 'en' | 'ur' =
-    settings.language || appSettings.default_language || 'en';
-  const effectiveAppName =
-    settings.app_display_name || appSettings.app_name || 'Hazri Book';
-  const effectivePrimaryColor =
-    settings.primary_color || appSettings.primary_color || '#2563EB';
-  const effectiveMessageTemplate =
-    settings.message_template ||
-    appSettings.default_message_template ||
-    DEFAULT_MESSAGE_TEMPLATE;
 
   const toggleDarkMode = () => {
     updateSettings({ dark_mode: !settings.dark_mode });
   };
 
   const toggleLanguage = () => {
-    const nextLang = effectiveLanguage === 'en' ? 'ur' : 'en';
-    if (!effectiveUserId) {
-      setAppLanguage(nextLang);
-      setSettings((prev) => ({ ...prev, language: nextLang }));
-      return;
-    }
+    const nextLang = settings.language === 'en' ? 'ur' : 'en';
     updateSettings({ language: nextLang });
   };
 
   const syncNow = async () => {
-    await attendanceService.flushOfflineQueue();
-    const count = await getPendingAttendanceCount();
-    setPendingOfflineCount(count);
+    await flushAndRefresh();
   };
 
   return (
     <SettingsContext.Provider
       value={{
         settings,
-        appSettings,
-        effectiveAppName,
-        effectivePrimaryColor,
-        effectiveLanguage,
-        effectiveMessageTemplate,
+        effectiveAppName: settings.app_display_name || 'Hazri Book',
+        effectivePrimaryColor: settings.primary_color || '#2563EB',
+        effectiveLanguage: settings.language || 'en',
+        effectiveMessageTemplate: settings.message_template || DEFAULT_MESSAGE_TEMPLATE,
         updateSettings,
-        refreshAppSettings,
         toggleDarkMode,
         toggleLanguage,
         pendingOfflineCount,

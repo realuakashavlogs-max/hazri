@@ -9,7 +9,6 @@ import {
   Users,
   BarChart3,
   Settings,
-  ShieldCheck,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -17,7 +16,6 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const { user } = useAuth();
   const { t } = useTranslation();
 
-  // Desktop / Tablet Sidebar links (includes Classes & Admin)
   const sidebarLinks = [
     { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
     { to: '/attendance', label: t('nav.attendance'), icon: CheckSquare },
@@ -27,7 +25,6 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     { to: '/settings', label: t('nav.settings'), icon: Settings },
   ];
 
-  // Mobile Bottom Nav: exact 5 tabs per UI/UX Design Brief §4
   const mobileTabs = [
     { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
     { to: '/attendance', label: t('nav.attendance'), icon: CheckSquare },
@@ -63,31 +60,15 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
                 </NavLink>
               );
             })}
-
-            {user?.role === 'admin' && (
-              <div className="pt-3 mt-3 border-t border-[var(--color-border)]">
-                <NavLink
-                  to="/admin"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3.5 min-h-[44px] rounded-xl text-sm font-semibold transition-all duration-150 ${
-                      isActive
-                        ? 'bg-amber-500 text-white shadow-sm'
-                        : 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40'
-                    }`
-                  }
-                >
-                  <ShieldCheck className="w-5 h-5 shrink-0" />
-                  <span className="truncate">{t('nav.admin')}</span>
-                </NavLink>
-              </div>
-            )}
           </nav>
 
           {user && (
             <div className="pt-3 border-t border-[var(--color-border)] px-2 pb-1">
-              <p className="text-xs font-bold text-[var(--color-text)] truncate">
-                {user.full_name}
-              </p>
+              {user.full_name && (
+                <p className="text-xs font-bold text-[var(--color-text)] truncate">
+                  {user.full_name}
+                </p>
+              )}
               <p className="text-[11px] text-[var(--color-muted)] truncate font-mono">
                 {user.email}
               </p>

@@ -11,8 +11,6 @@ import { useNavigate } from 'react-router-dom';
 import type { ClassItem } from '../../types/database';
 import {
   Plus,
-  Archive,
-  ArchiveRestore,
   Trash2,
   Edit2,
   Users,
@@ -28,38 +26,28 @@ export const ClassesPage: React.FC = () => {
   const {
     classes,
     isLoading,
-    isReadOnly,
     createClass,
     updateClass,
-    archiveClass,
     deleteClass,
   } = useClasses();
 
   const { students } = useStudents();
 
-  const [tab, setTab] = useState<'active' | 'archived'>('active');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
   const [deleteConfirmClass, setDeleteConfirmClass] = useState<ClassItem | null>(null);
 
   const [formName, setFormName] = useState('');
-  const [formSection, setFormSection] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const activeClasses = classes.filter((c) => !c.is_archived);
-  const archivedClasses = classes.filter((c) => c.is_archived);
-  const displayedClasses = tab === 'active' ? activeClasses : archivedClasses;
 
   const handleOpenAdd = () => {
     setFormName('');
-    setFormSection('');
     setIsAddModalOpen(true);
   };
 
   const handleOpenEdit = (cls: ClassItem) => {
     setEditingClass(cls);
     setFormName(cls.name);
-    setFormSection(cls.section || '');
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -73,7 +61,6 @@ export const ClassesPage: React.FC = () => {
           id: editingClass.id,
           updates: {
             name: formName.trim(),
-            section: formSection.trim() || null,
           },
         });
         setEditingClass(null);
@@ -81,7 +68,6 @@ export const ClassesPage: React.FC = () => {
       } else {
         await createClass({
           name: formName.trim(),
-          section: formSection.trim() || undefined,
         });
         setIsAddModalOpen(false);
         showToast('Class created!', 'success');
@@ -102,68 +88,30 @@ export const ClassesPage: React.FC = () => {
             {t('classes.title')}
           </h1>
           <p className="text-sm text-[var(--color-muted)]">
-            Manage your grade classes, batches, and student groups
+            Manage your classes, batches, and student groups
           </p>
         </div>
 
-        {!isReadOnly && (
-          <Button onClick={handleOpenAdd} className="shrink-0 gap-1.5 shadow-sm">
-            <Plus className="w-4 h-4" />
-            <span>{t('classes.add_class')}</span>
-          </Button>
-        )}
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-[var(--color-border)]">
-        <button
-          type="button"
-          onClick={() => setTab('active')}
-          className={`min-h-[44px] px-4 text-sm font-bold transition-all border-b-2 ${
-            tab === 'active'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-[var(--color-muted)] hover:text-[var(--color-text)]'
-          }`}
-        >
-          {t('classes.active')} ({activeClasses.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('archived')}
-          className={`min-h-[44px] px-4 text-sm font-bold transition-all border-b-2 ${
-            tab === 'archived'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-[var(--color-muted)] hover:text-[var(--color-text)]'
-          }`}
-        >
-          {t('classes.archived')} ({archivedClasses.length})
-        </button>
+        <Button onClick={handleOpenAdd} className="shrink-0 gap-1.5 shadow-sm">
+          <Plus className="w-4 h-4" />
+          <span>{t('classes.add_class')}</span>
+        </Button>
       </div>
 
       {/* Classes Grid */}
       {isLoading ? (
         <SkeletonCard count={3} />
-      ) : displayedClasses.length === 0 ? (
+      ) : classes.length === 0 ? (
         <EmptyState
           variant="classes"
-          title={tab === 'active' ? 'No Active Classes' : 'No Archived Classes'}
-          description={
-            tab === 'active'
-              ? 'Click Add Class above to create your first class (e.g. Class 5, Hifz Batch).'
-              : 'Classes you archive will appear here safely preserved.'
-          }
-          action={
-            tab === 'active' && !isReadOnly ? (
-              <Button onClick={handleOpenAdd}>{t('classes.add_class')}</Button>
-            ) : undefined
-          }
+          title="No Classes Yet"
+          description="Click Add Class above to create your first class (e.g. Class 5, Hifz Batch A)."
+          action={<Button onClick={handleOpenAdd}>{t('classes.add_class')}</Button>}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {displayedClasses.map((cls) => {
-            const studentCount = students.filter(
-              (s) => s.class_id === cls.id && !s.is_archived
-            ).length;
+          {classes.map((cls) => {
+            const studentCount = students.filter((s) => s.class_id === cls.id).length;
 
             return (
               <div
@@ -175,11 +123,6 @@ export const ClassesPage: React.FC = () => {
                     <h2 className="font-bold text-base text-[var(--color-text)] leading-tight">
                       {cls.name}
                     </h2>
-                    {cls.section && (
-                      <span className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary shrink-0">
-                        {cls.section}
-                      </span>
-                    )}
                   </div>
 
                   <div className="flex items-center gap-1.5 text-sm font-semibold text-primary mb-4">
@@ -189,58 +132,36 @@ export const ClassesPage: React.FC = () => {
                 </div>
 
                 <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
-                  {!cls.is_archived ? (
-                    <Button
-                      size="sm"
-                      onClick={() => navigate(`/attendance?classId=${cls.id}`)}
-                      className="gap-1.5"
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(`/attendance?classId=${cls.id}`)}
+                    className="gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{t('classes.mark_attendance')}</span>
+                  </Button>
+
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(cls)}
+                      aria-label={`Edit ${cls.name}`}
+                      title="Edit"
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>{t('classes.mark_attendance')}</span>
-                    </Button>
-                  ) : (
-                    <span className="text-xs font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 px-2.5 py-1 rounded-lg">
-                      {t('classes.archived')}
-                    </span>
-                  )}
+                      <Edit2 className="w-4 h-4" />
+                    </button>
 
-                  {!isReadOnly && (
-                    <div className="flex items-center gap-0.5">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEdit(cls)}
-                        aria-label={`Edit ${cls.name}`}
-                        title="Edit"
-                        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => archiveClass({ id: cls.id, isArchived: !cls.is_archived })}
-                        aria-label={cls.is_archived ? t('classes.unarchive') : t('classes.archive')}
-                        title={cls.is_archived ? t('classes.unarchive') : t('classes.archive')}
-                        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                      >
-                        {cls.is_archived ? (
-                          <ArchiveRestore className="w-4 h-4" />
-                        ) : (
-                          <Archive className="w-4 h-4" />
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setDeleteConfirmClass(cls)}
-                        aria-label={`Delete ${cls.name}`}
-                        title="Delete"
-                        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-[var(--color-muted)] hover:text-[#DC2626] hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmClass(cls)}
+                      aria-label={`Delete ${cls.name}`}
+                      title="Delete"
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-[var(--color-muted)] hover:text-[#DC2626] hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -265,13 +186,6 @@ export const ClassesPage: React.FC = () => {
             onChange={(e) => setFormName(e.target.value)}
             required
             autoFocus
-          />
-
-          <Input
-            label={t('classes.section')}
-            placeholder="e.g. Section B, Morning, Room 3"
-            value={formSection}
-            onChange={(e) => setFormSection(e.target.value)}
           />
 
           <div className="flex justify-end gap-2 pt-2">
@@ -307,21 +221,20 @@ export const ClassesPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2">
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  await archiveClass({ id: deleteConfirmClass.id, isArchived: true });
-                  setDeleteConfirmClass(null);
-                }}
-              >
-                Archive Instead
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" onClick={() => setDeleteConfirmClass(null)}>
+                {t('common.cancel')}
               </Button>
               <Button
                 variant="danger"
                 onClick={async () => {
-                  await deleteClass(deleteConfirmClass.id);
-                  setDeleteConfirmClass(null);
+                  try {
+                    await deleteClass(deleteConfirmClass.id);
+                    showToast('Class deleted', 'info');
+                    setDeleteConfirmClass(null);
+                  } catch (err: any) {
+                    showToast(err.message || 'Failed to delete class', 'error');
+                  }
                 }}
               >
                 Delete Permanently

@@ -36,7 +36,11 @@ export const SyncIndicator: React.FC = () => {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
         <CloudOff className="w-3.5 h-3.5 shrink-0" />
-        <span>{t('sync.offline')}</span>
+        <span>
+          {pendingOfflineCount > 0
+            ? `${t('sync.offline')} • ${t('sync.pending', { count: pendingOfflineCount })}`
+            : t('sync.offline')}
+        </span>
       </span>
     );
   }

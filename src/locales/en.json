@@ -7,29 +7,19 @@
     "classes": "Classes",
     "students": "Students",
     "reports": "Reports",
-    "settings": "Settings",
-    "admin": "Admin",
-    "back_to_app": "Back to App"
+    "settings": "Settings"
   },
   "auth": {
     "login": "Sign In",
-    "signup": "Create Account",
     "logout": "Sign Out",
     "email": "Email Address",
     "password": "Password",
     "confirm_password": "Confirm Password",
     "new_password": "New Password",
-    "full_name": "Full Name",
     "forgot_password": "Forgot Password?",
     "reset_password": "Reset Password",
     "update_password": "Update Password",
-    "send_reset_link": "Send Reset Link",
-    "no_account": "Don't have an account?",
-    "have_account": "Already have an account?",
-    "check_email_title": "Check Your Email",
-    "check_email_desc": "We sent a confirmation link to {{email}}. Please verify your email before signing in.",
-    "blocked_title": "Your Account is Blocked",
-    "blocked_desc": "Your access has been restricted by an administrator. Please contact support for assistance."
+    "send_reset_link": "Send Reset Link"
   },
   "dashboard": {
     "greeting": "Assalamu Alaikum, {{name}}",
@@ -52,15 +42,9 @@
     "add_class": "Add Class",
     "edit_class": "Edit Class",
     "name": "Class Name",
-    "section": "Section / Room",
-    "description": "Description / Timing",
-    "active": "Active",
-    "archived": "Archived",
-    "archive": "Archive",
-    "unarchive": "Restore",
     "students_count": "{{count}} students",
     "mark_attendance": "Mark Attendance",
-    "delete_confirm": "Deleting this class will permanently remove all its students and attendance history. Consider archiving instead."
+    "delete_confirm": "Deleting this class will permanently remove all its students and attendance history."
   },
   "students": {
     "title": "Students",
@@ -68,16 +52,10 @@
     "edit_student": "Edit Student",
     "bulk_add": "Bulk Add",
     "bulk_submit": "Import Students",
-    "search_placeholder": "Search by name, roll no, or parent...",
+    "search_placeholder": "Search by name or roll no...",
     "name": "Student Name",
     "roll_no": "Roll Number",
-    "parent_name": "Parent / Guardian Name",
     "parent_phone": "Parent WhatsApp Phone",
-    "notes": "Notes",
-    "active": "Active",
-    "archived": "Archived",
-    "archive": "Archive",
-    "unarchive": "Restore",
     "all_classes": "All Classes"
   },
   "attendance": {
@@ -86,7 +64,7 @@
     "saving": "Saving...",
     "saved_success": "Attendance saved and synced!",
     "saved_offline": "Saved offline — will sync when internet returns",
-    "no_students": "No active students in this class",
+    "no_students": "No students in this class",
     "notify_parent": "Notify Parent",
     "add_note": "Add Daily Note",
     "save_note": "Save Note",
@@ -111,6 +89,7 @@
     "present": "Present",
     "absent": "Absent",
     "late": "Late",
+    "leave": "Leave",
     "total": "Total",
     "rate": "Rate"
   },
@@ -120,33 +99,13 @@
     "primary_color": "Primary Theme Color",
     "dark_mode": "Dark Mode",
     "language": "Language",
-    "custom_statuses": "Attendance Statuses",
-    "add_status": "Add Status",
-    "notify_parents_toggle": "Prompt to notify parents after save",
+    "attendance_statuses": "Attendance Statuses",
     "whatsapp_template": "WhatsApp Message Template",
-    "preview": "Message Preview",
-    "admin_panel": "Admin Panel",
-    "admin_panel_desc": "Manage users, read-only audits, and global defaults"
-  },
-  "admin": {
-    "title": "Admin Panel",
-    "badge": "Admin",
-    "overview": "Overview",
-    "users_management": "Users",
-    "global_defaults": "Global Settings",
-    "inspect": "Inspect",
-    "block": "Block User",
-    "unblock": "Unblock User",
-    "make_admin": "Make Admin",
-    "make_user": "Set as User",
-    "role": "Role",
-    "status": "Status",
-    "registered": "Registered",
-    "actions": "Actions"
+    "preview": "Message Preview"
   },
   "sync": {
     "synced": "Synced",
-    "pending": "{{count}} pending sync",
+    "pending": "Pending sync ({{count}})",
     "offline": "Offline",
     "offline_banner": "You are offline — attendance marks are saved locally and will sync automatically when online."
   },

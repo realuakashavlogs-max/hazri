@@ -3,14 +3,14 @@ import { studentsService } from '../services/studentsService';
 import { useAuth } from '../contexts/AuthContext';
 
 export function useStudents(classId?: string) {
-  const { effectiveUserId, inspectedUser } = useAuth();
+  const { user } = useAuth();
+  const userId = user?.id || '';
   const queryClient = useQueryClient();
-  const isReadOnly = Boolean(inspectedUser);
 
   const query = useQuery({
-    queryKey: ['students', effectiveUserId, classId],
-    queryFn: () => studentsService.getStudents(effectiveUserId, classId),
-    enabled: Boolean(effectiveUserId),
+    queryKey: ['students', userId, classId],
+    queryFn: () => studentsService.getStudents(userId, classId),
+    enabled: Boolean(userId),
   });
 
   const createStudentMutation = useMutation({
@@ -18,20 +18,18 @@ export function useStudents(classId?: string) {
       classId: string;
       name: string;
       rollNo?: string;
-      parentName?: string;
       parentPhone?: string;
-      notes?: string;
-    }) => studentsService.createStudent({ userId: effectiveUserId, ...data }),
+    }) => studentsService.createStudent(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students', effectiveUserId] });
+      queryClient.invalidateQueries({ queryKey: ['students', userId] });
     },
   });
 
   const bulkCreateMutation = useMutation({
     mutationFn: (data: { classId: string; rawText: string }) =>
-      studentsService.bulkCreateStudents({ userId: effectiveUserId, ...data }),
+      studentsService.bulkCreateStudents(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students', effectiveUserId] });
+      queryClient.invalidateQueries({ queryKey: ['students', userId] });
     },
   });
 
@@ -44,21 +42,20 @@ export function useStudents(classId?: string) {
       updates: Parameters<typeof studentsService.updateStudent>[1];
     }) => studentsService.updateStudent(id, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students', effectiveUserId] });
+      queryClient.invalidateQueries({ queryKey: ['students', userId] });
     },
   });
 
   const deleteStudentMutation = useMutation({
     mutationFn: (id: string) => studentsService.deleteStudent(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students', effectiveUserId] });
+      queryClient.invalidateQueries({ queryKey: ['students', userId] });
     },
   });
 
   return {
     students: query.data || [],
     isLoading: query.isLoading,
-    isReadOnly,
     createStudent: createStudentMutation.mutateAsync,
     bulkCreateStudents: bulkCreateMutation.mutateAsync,
     updateStudent: updateStudentMutation.mutateAsync,

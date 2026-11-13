@@ -7,29 +7,19 @@
     "classes": "کلاسز",
     "students": "طلباء",
     "reports": "رپورٹس",
-    "settings": "ترتیبات",
-    "admin": "ایڈمن",
-    "back_to_app": "ایپ پر واپس"
+    "settings": "ترتیبات"
   },
   "auth": {
     "login": "لاگ ان",
-    "signup": "نیا اکاؤنٹ بنائیں",
     "logout": "لاگ آؤٹ",
     "email": "ای میل ایڈریس",
     "password": "پاس ورڈ",
     "confirm_password": "پاس ورڈ کی تصدیق",
     "new_password": "نیا پاس ورڈ",
-    "full_name": "مکمل نام",
     "forgot_password": "پاس ورڈ بھول گئے؟",
     "reset_password": "پاس ورڈ تبدیل کریں",
     "update_password": "پاس ورڈ محفوظ کریں",
-    "send_reset_link": "ری سیٹ لنک بھیجیں",
-    "no_account": "اکاؤنٹ نہیں ہے؟",
-    "have_account": "پہلے سے اکاؤنٹ موجود ہے؟",
-    "check_email_title": "اپنا ای میل چیک کریں",
-    "check_email_desc": "ہم نے {{email}} پر تصدیقی لنک بھیجا ہے۔ لاگ ان سے پہلے ای میل کی تصدیق کریں۔",
-    "blocked_title": "آپ کا اکاؤنٹ بلاک ہے",
-    "blocked_desc": "ایڈمنسٹریٹر نے آپ کا اکاؤنٹ عارضی طور پر بند کر دیا ہے۔ براہ کرم رابطہ کریں۔"
+    "send_reset_link": "ری سیٹ لنک بھیجیں"
   },
   "dashboard": {
     "greeting": "السلام علیکم، {{name}}",
@@ -52,15 +42,9 @@
     "add_class": "کلاس شامل کریں",
     "edit_class": "کلاس میں ترمیم",
     "name": "کلاس کا نام",
-    "section": "سیکشن / کمرہ",
-    "description": "تفصیل / وقت",
-    "active": "فعال",
-    "archived": "آرکائیو",
-    "archive": "آرکائیو کریں",
-    "unarchive": "بحال کریں",
     "students_count": "{{count}} طلباء",
     "mark_attendance": "حاضری لگائیں",
-    "delete_confirm": "اس کلاس کو حذف کرنے سے اس کے تمام طلباء اور حاضری کا ریکارڈ ہمیشہ کے لیے مٹ جائے گا۔ بہتر ہے آرکائیو کریں۔"
+    "delete_confirm": "اس کلاس کو حذف کرنے سے اس کے تمام طلباء اور حاضری کا ریکارڈ ہمیشہ کے لیے مٹ جائے گا۔"
   },
   "students": {
     "title": "طلباء",
@@ -68,16 +52,10 @@
     "edit_student": "طالب علم میں ترمیم",
     "bulk_add": "متعدد طلباء",
     "bulk_submit": "طلباء درآمد کریں",
-    "search_placeholder": "نام، رول نمبر یا والد کے نام سے تلاش کریں...",
+    "search_placeholder": "نام یا رول نمبر سے تلاش کریں...",
     "name": "طالب علم کا نام",
     "roll_no": "رول نمبر",
-    "parent_name": "والد / سرپرست کا نام",
     "parent_phone": "والدین کا واٹس ایپ نمبر",
-    "notes": "نوٹس",
-    "active": "فعال",
-    "archived": "آرکائیو",
-    "archive": "آرکائیو",
-    "unarchive": "بحال",
     "all_classes": "تمام کلاسز"
   },
   "attendance": {
@@ -86,7 +64,7 @@
     "saving": "محفوظ ہو رہا ہے...",
     "saved_success": "حاضری محفوظ ہو گئی!",
     "saved_offline": "آف لائن محفوظ ہو گئی — انٹرنیٹ آنے پر سنک ہو جائے گی",
-    "no_students": "اس کلاس میں کوئی فعال طالب علم نہیں ہے",
+    "no_students": "اس کلاس میں کوئی طالب علم نہیں ہے",
     "notify_parent": "والدین کو اطلاع",
     "add_note": "روزانہ نوٹ",
     "save_note": "نوٹ محفوظ کریں",
@@ -111,6 +89,7 @@
     "present": "حاضر",
     "absent": "غیر حاضر",
     "late": "دیر سے",
+    "leave": "رخصت",
     "total": "کل",
     "rate": "شرح"
   },
@@ -120,33 +99,13 @@
     "primary_color": "مرکزی رنگ",
     "dark_mode": "ڈارک موڈ",
     "language": "زبان",
-    "custom_statuses": "حاضری کی اقسام",
-    "add_status": "نئی قسم شامل کریں",
-    "notify_parents_toggle": "محفوظ کرنے کے بعد والدین کو اطلاع کا بٹن دکھائیں",
+    "attendance_statuses": "حاضری کی اقسام",
     "whatsapp_template": "واٹس ایپ پیغام کا نمونہ",
-    "preview": "پیغام کا پیش نظارہ",
-    "admin_panel": "ایڈمن پینل",
-    "admin_panel_desc": "صارفین اور ایپ کی عمومی ترتیبات کا انتظام"
-  },
-  "admin": {
-    "title": "ایڈمن پینل",
-    "badge": "ایڈمن",
-    "overview": "جائزہ",
-    "users_management": "صارفین",
-    "global_defaults": "عمومی ترتیبات",
-    "inspect": "معائنہ",
-    "block": "بلاک کریں",
-    "unblock": "ان بلاک کریں",
-    "make_admin": "ایڈمن بنائیں",
-    "make_user": "عام صارف بنائیں",
-    "role": "کردار",
-    "status": "حالت",
-    "registered": "رجسٹریشن",
-    "actions": "عمل"
+    "preview": "پیغام کا پیش نظارہ"
   },
   "sync": {
     "synced": "سنک شدہ",
-    "pending": "{{count}} سنک باقی",
+    "pending": "Pending sync ({{count}})",
     "offline": "آف لائن",
     "offline_banner": "آپ آف لائن ہیں — حاضری مقامی طور پر محفوظ ہو رہی ہے اور آن لائن ہونے پر خودکار سنک ہو گی۔"
   },

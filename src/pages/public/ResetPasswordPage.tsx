@@ -23,7 +23,7 @@ const resetSchema = z
 type ResetFormValues = z.infer<typeof resetSchema>;
 
 export const ResetPasswordPage: React.FC = () => {
-  const { updatePassword } = useAuth();
+  const { updatePassword, signOut } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -46,9 +46,10 @@ export const ResetPasswordPage: React.FC = () => {
     try {
       setServerError(null);
       await updatePassword(values.newPassword);
+      await signOut().catch(() => {});
       setDone(true);
       showToast('Password updated successfully!', 'success');
-      setTimeout(() => navigate('/login'), 1800);
+      setTimeout(() => navigate('/login', { replace: true }), 1800);
     } catch (err: any) {
       setServerError(err.message || 'Failed to update password. Please request a new reset link.');
     }
