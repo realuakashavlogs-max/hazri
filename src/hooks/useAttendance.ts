@@ -21,6 +21,7 @@ export function useAttendance(classId: string, date: string) {
       note?: string;
     }[]) =>
       attendanceService.saveAttendance(
+        userId,
         records.map((r) => ({
           classId,
           attendanceDate: date,
