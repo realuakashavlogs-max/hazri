@@ -106,14 +106,43 @@ export const AttendancePage: React.FC = () => {
     return saved?.note || '';
   };
 
-  const setStudentStatus = (studentId: string, status: AttendanceStatusKey) => {
+  const setStudentStatus = async (studentId: string, status: AttendanceStatusKey) => {
+    const note = pendingMarks[studentId]?.note ?? getStudentNote(studentId);
     setPendingMarks((prev) => ({
       ...prev,
-      [studentId]: {
-        status,
-        note: prev[studentId]?.note ?? getStudentNote(studentId),
-      },
+      [studentId]: { status, note },
     }));
+
+    // Absent and leave are persisted immediately, then the server sends the parent alert.
+    if (status !== 'absent' && status !== 'leave') return;
+    try {
+      const saved = await saveAttendance([{ studentId, status, note }]);
+      if (saved.queuedOffline) {
+        showToast('Attendance queued offline. Parent WhatsApp will send after the device reconnects and syncs.', 'info');
+        return;
+      }
+
+      setPendingMarks((prev) => {
+        const next = { ...prev };
+        delete next[studentId];
+        return next;
+      });
+
+      const { data, error } = await (supabase.functions as any).invoke(
+        'send-parent-whatsapp',
+        { body: { classId: selectedClassId, attendanceDate: selectedDate } }
+      );
+      if (error || data?.error) {
+        const detail = data?.error || error?.message || 'Unknown notification error';
+        showToast(`Attendance saved, but WhatsApp could not send: ${detail}`, 'info');
+      } else if (data?.sent > 0) {
+        showToast(`Parent WhatsApp sent: ${data.sent}`, 'success');
+      } else {
+        showToast(data?.message || 'Attendance saved. No new parent notification was sent.', 'info');
+      }
+    } catch (error: any) {
+      showToast(error?.message || 'Attendance saved, but parent notification failed.', 'info');
+    }
   };
 
   const handleMarkAllPresent = () => {
@@ -146,7 +175,7 @@ export const AttendancePage: React.FC = () => {
       );
 
       if (!res.queuedOffline) {
-        const { data: notificationResult, error: notificationError } = await supabase.functions.invoke(
+        const { data: notificationResult, error: notificationError } = await (supabase.functions as any).invoke(
           'send-parent-whatsapp',
           { body: { classId: selectedClassId, attendanceDate: selectedDate } }
         );
