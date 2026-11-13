@@ -97,15 +97,48 @@ export type Database = {
         };
         Relationships: [];
       };
-      attendance_records: {
-        Row: AttendanceRecord;
+      attendance_statuses: {
+        Row: {
+          id: string;
+          user_id: string;
+          key: AttendanceStatusKey;
+          label_en: string;
+          label_ur: string;
+          color: string;
+          counts_as_present: boolean;
+          notify_parents: boolean;
+          sort_order: number;
+        };
         Insert: {
           id?: string;
-          user_id?: string;
+          user_id: string;
+          key: AttendanceStatusKey;
+          label_en: string;
+          label_ur: string;
+          color: string;
+          counts_as_present?: boolean;
+          notify_parents?: boolean;
+          sort_order?: number;
+        };
+        Update: {
+          label_en?: string;
+          label_ur?: string;
+          color?: string;
+          counts_as_present?: boolean;
+          notify_parents?: boolean;
+          sort_order?: number;
+        };
+        Relationships: [];
+      };
+      attendance_records: {
+        Row: Omit<AttendanceRecord, 'status'> & { status_id: string };
+        Insert: {
+          id?: string;
+          user_id: string;
           student_id: string;
           class_id: string;
           attendance_date: string;
-          status: AttendanceStatusKey;
+          status_id: string;
           note?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -113,14 +146,14 @@ export type Database = {
         Update: {
           class_id?: string;
           attendance_date?: string;
-          status?: AttendanceStatusKey;
+          status_id?: string;
           note?: string | null;
           updated_at?: string;
         };
         Relationships: [];
       };
     };
-    Views: {
+        Views: {
       [_ in never]: never;
     };
     Functions: {
