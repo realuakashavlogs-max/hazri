@@ -24,9 +24,14 @@ export const classesService = {
   async createClass(params: { name: string }): Promise<ClassItem> {
     ensureConfigured();
 
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    if (!user) throw new Error('Please sign in again before creating a class.');
+
     const { data, error } = await supabase
       .from('classes')
       .insert({
+        user_id: user.id,
         name: params.name,
       })
       .select('id, user_id, name, created_at')
