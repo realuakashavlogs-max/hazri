@@ -1,0 +1,6 @@
+{
+  "name": "Hazri Book",
+  "description": "Smart, fast daily attendance register for schools, madrasas, and tutors with WhatsApp notifications, detailed reports, Urdu/English support, offline sync, and user & admin roles.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
