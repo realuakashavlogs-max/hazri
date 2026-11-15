@@ -14,6 +14,7 @@ export function mapSupabaseUser(authUser: User): AuthUser {
     id: authUser.id,
     email: authUser.email || '',
     full_name: typeof metaName === 'string' && metaName.trim() ? metaName.trim() : null,
+    avatar_url: typeof authUser.user_metadata?.avatar_url === 'string' ? authUser.user_metadata.avatar_url : null,
   };
 }
 
