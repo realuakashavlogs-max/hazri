@@ -23,7 +23,7 @@ export const authService = {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: 'https://hazri.suffah.workers.dev/dashboard',
         queryParams: { access_type: 'offline', prompt: 'select_account' },
       },
     });
