@@ -261,7 +261,7 @@ create policy "sdp_update_own"
     and is_not_blocked()
     and exists (
       select 1 from public.students s
-      where s.id = student_id and s.user_id = auth.uid()
+      where s.id = student_id and s.user_id = auth.uid() and s.class_id = student_daily_performance.class_id
     )
     and exists (
       select 1 from public.classes c
