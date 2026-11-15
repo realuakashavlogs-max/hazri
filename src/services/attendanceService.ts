@@ -202,6 +202,33 @@ export const attendanceService = {
     return mergePendingRecords(mapRemoteRecords((data || []) as AttendanceDbRow[], statusIds), pendingMatching, params.userId);
   },
 
+
+  async getAttendanceForStudentDate(params: {
+    userId: string;
+    studentId: string;
+    date: string;
+  }): Promise<AttendanceRecord | null> {
+    ensureConfigured();
+    const pendingAll = await getAllPendingAttendance(params.userId);
+    const pending = pendingAll.find(
+      (p) => p.student_id === params.studentId && p.attendance_date === params.date
+    );
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return pending ? mergePendingRecords([], [pending], params.userId)[0] || null : null;
+    }
+    const statusIds = await getStatusIds(params.userId);
+    const { data, error } = await supabase
+      .from('attendance_records')
+      .select('id, user_id, student_id, class_id, attendance_date, status_id, note, created_at, updated_at')
+      .eq('user_id', params.userId)
+      .eq('student_id', params.studentId)
+      .eq('attendance_date', params.date)
+      .maybeSingle();
+    if (error) throw error;
+    const remote = data ? mapRemoteRecords([data as AttendanceDbRow], statusIds) : [];
+    return mergePendingRecords(remote, pending ? [pending] : [], params.userId)[0] || null;
+  },
+
   async saveAttendance(
     userId: string,
     records: {
