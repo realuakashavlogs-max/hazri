@@ -24,21 +24,24 @@ alter table if exists public.attendance_records enable row level security;
 
 -- Classes policies
 drop policy if exists "classes_select_own" on public.classes;
+drop policy if exists "classes_own_insert" on public.classes;
+drop policy if exists "classes_own_update" on public.classes;
+drop policy if exists "classes_own_delete" on public.classes;
 drop policy if exists "classes_insert_own" on public.classes;
 drop policy if exists "classes_update_own" on public.classes;
 drop policy if exists "classes_delete_own" on public.classes;
 
 create policy "classes_select_own"
   on public.classes for select
-  using (auth.uid() = user_id);
+  using (auth.uid() = user_id and is_not_blocked());
 
 create policy "classes_insert_own"
   on public.classes for insert
-  with check (auth.uid() = user_id);
+  with check (auth.uid() = user_id and is_not_blocked());
 
 create policy "classes_update_own"
   on public.classes for update
-  using (auth.uid() = user_id)
+  using (auth.uid() = user_id and is_not_blocked())
   with check (auth.uid() = user_id);
 
 create policy "classes_delete_own"
@@ -47,6 +50,9 @@ create policy "classes_delete_own"
 
 -- Students policies (also verify referenced class belongs to the same teacher)
 drop policy if exists "students_select_own" on public.students;
+drop policy if exists "students_own_insert" on public.students;
+drop policy if exists "students_own_update" on public.students;
+drop policy if exists "students_own_delete" on public.students;
 drop policy if exists "students_insert_own" on public.students;
 drop policy if exists "students_update_own" on public.students;
 drop policy if exists "students_delete_own" on public.students;
@@ -59,6 +65,7 @@ create policy "students_insert_own"
   on public.students for insert
   with check (
     auth.uid() = user_id
+    and is_not_blocked()
     and exists (
       select 1 from public.classes c
       where c.id = class_id and c.user_id = auth.uid()
@@ -82,6 +89,9 @@ create policy "students_delete_own"
 
 -- Attendance records policies
 drop policy if exists "attendance_select_own" on public.attendance_records;
+drop policy if exists "attendance_records_own_insert" on public.attendance_records;
+drop policy if exists "attendance_records_own_update" on public.attendance_records;
+drop policy if exists "attendance_records_own_delete" on public.attendance_records;
 drop policy if exists "attendance_insert_own" on public.attendance_records;
 drop policy if exists "attendance_update_own" on public.attendance_records;
 drop policy if exists "attendance_delete_own" on public.attendance_records;
@@ -96,7 +106,7 @@ create policy "attendance_insert_own"
     auth.uid() = user_id
     and exists (
       select 1 from public.students s
-      where s.id = student_id and s.user_id = auth.uid()
+      where s.id = student_id and s.user_id = auth.uid() and s.class_id = class_id
     )
     and exists (
       select 1 from public.classes c
@@ -126,7 +136,7 @@ create policy "attendance_delete_own"
 -- 3. New Table: student_daily_performance
 create table if not exists public.student_daily_performance (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  user_id uuid not null default auth.uid() references public.profiles(id) on delete cascade,
   student_id uuid not null references public.students(id) on delete cascade,
   class_id uuid not null references public.classes(id) on delete cascade,
   record_date date not null,
