@@ -1,53 +1,29 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSettings } from '../../contexts/SettingsContext';
-import { Input } from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
 import { BookOpenCheck, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
-
 export const LoginPage: React.FC = () => {
-  const { user, loading, signIn, signInWithGoogle } = useAuth();
+  const { user, loading, signInWithGoogle } = useAuth();
   const { effectiveAppName } = useSettings();
-  const navigate = useNavigate();
   const { t } = useTranslation();
   const [serverError, setServerError] = useState<string | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-  });
 
   if (!loading && user) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const onSubmit = async (values: LoginFormValues) => {
+  const handleGoogleSignIn = async () => {
     try {
       setServerError(null);
-      await signIn(values.email, values.password);
-      navigate('/dashboard', { replace: true });
+      setGoogleLoading(true);
+      await signInWithGoogle();
     } catch (err: any) {
-      setServerError(err.message || 'Failed to sign in. Please check your credentials.');
+      setServerError(err.message || 'Google sign-in could not be started. Please try again.');
+      setGoogleLoading(false);
     }
   };
 
@@ -65,9 +41,12 @@ export const LoginPage: React.FC = () => {
         </div>
 
         <div className="bg-[var(--color-surface)] rounded-3xl shadow-xl border border-[var(--color-border)] p-6 sm:p-8">
-          <h2 className="text-xl font-bold text-[var(--color-text)] mb-5">
-            {t('auth.login')}
+          <h2 className="text-xl font-bold text-[var(--color-text)] mb-3">
+            Sign in to your account
           </h2>
+          <p className="text-sm text-[var(--color-muted)] mb-5">
+            Use your Google account to access your own classes, students, and attendance records.
+          </p>
 
           {serverError && (
             <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-xs text-[#DC2626] dark:text-red-300 flex items-center gap-2">
@@ -78,57 +57,13 @@ export const LoginPage: React.FC = () => {
 
           <button
             type="button"
-            onClick={async () => {
-              try {
-                setServerError(null);
-                setGoogleLoading(true);
-                await signInWithGoogle();
-              } catch (err: any) {
-                setServerError(err.message || 'Google sign-in could not be started. Please try again.');
-                setGoogleLoading(false);
-              }
-            }}
+            onClick={handleGoogleSignIn}
             disabled={googleLoading}
-            className="w-full h-12 mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-bg)] disabled:opacity-60 font-semibold flex items-center justify-center gap-3 transition-colors"
+            className="w-full h-12 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-bg)] disabled:opacity-60 font-semibold flex items-center justify-center gap-3 transition-colors"
           >
             <span aria-hidden="true" className="font-extrabold text-lg"><span className="text-blue-600">G</span></span>
             {googleLoading ? 'Connecting to Google…' : 'Continue with Google'}
           </button>
-          <div className="flex items-center gap-3 mb-4 text-xs text-[var(--color-muted)]">
-            <span className="h-px flex-1 bg-[var(--color-border)]" />
-            <span>OR CONTINUE WITH EMAIL</span>
-            <span className="h-px flex-1 bg-[var(--color-border)]" />
-          </div>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <Input
-              label={t('auth.email')}
-              type="email"
-              placeholder="teacher@school.com"
-              error={errors.email?.message}
-              {...register('email')}
-            />
-
-            <Input
-              label={t('auth.password')}
-              type="password"
-              placeholder="••••••••"
-              error={errors.password?.message}
-              {...register('password')}
-            />
-
-            <div className="flex justify-end">
-              <Link
-                to="/forgot-password"
-                className="text-xs font-semibold text-primary hover:underline py-1"
-              >
-                {t('auth.forgot_password')}
-              </Link>
-            </div>
-
-            <Button type="submit" className="w-full" size="lg" isLoading={isSubmitting}>
-              {t('auth.login')}
-            </Button>
-          </form>
         </div>
       </div>
     </div>
