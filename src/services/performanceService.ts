@@ -261,18 +261,14 @@ export const performanceService = {
     const pendingRow = toPendingRecord(input, now);
 
     // Sync attendance record alongside daily performance (without creating loop)
-    const syncAttendancePromise = attendanceService.saveAttendance(
-      [
-        {
-          userId: input.user_id,
-          classId: input.class_id,
-          studentId: input.student_id,
-          attendanceDate: input.record_date,
-          status: input.attendance_status,
-        },
-      ],
-      { syncPerformance: false }
-    );
+    const syncAttendancePromise = attendanceService.saveAttendance(input.user_id, [
+      {
+        classId: input.class_id,
+        studentId: input.student_id,
+        attendanceDate: input.record_date,
+        status: input.attendance_status,
+      },
+    ]);
 
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       await Promise.all([enqueuePerformance([pendingRow]), syncAttendancePromise]);
