@@ -11,6 +11,23 @@ export const SUPABASE_ANON_KEY = (
   import.meta.env.VITE_SUPABASE_ANON_KEY || PROJECT_PUBLISHABLE_KEY
 ).trim();
 
+export const PRODUCTION_DASHBOARD_URL = 'https://hazri.suffah.workers.dev/dashboard';
+
+export function getGoogleOAuthRedirectUrl(): string {
+  if (import.meta.env.PROD) {
+    return PRODUCTION_DASHBOARD_URL;
+  }
+  if (typeof window !== 'undefined') {
+    const { origin, hostname } = window.location;
+    const isLocal =
+      hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0';
+    if (isLocal) {
+      return `${origin}/dashboard`;
+    }
+  }
+  return PRODUCTION_DASHBOARD_URL;
+}
+
 export const isSupabaseConfigured = Boolean(
   SUPABASE_URL &&
     SUPABASE_ANON_KEY &&
@@ -24,6 +41,7 @@ export const supabase: SupabaseClient<Database> = isSupabaseConfigured
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        flowType: 'pkce',
       },
     })
   : (null as unknown as SupabaseClient<Database>);

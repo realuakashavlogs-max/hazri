@@ -23,6 +23,7 @@ export function useAttendance(classId: string, date: string) {
       attendanceService.saveAttendance(
         userId,
         records.map((r) => ({
+          userId,
           classId,
           attendanceDate: date,
           studentId: r.studentId,
@@ -34,6 +35,7 @@ export function useAttendance(classId: string, date: string) {
       queryClient.invalidateQueries({ queryKey: ['attendance', userId, classId, date] });
       queryClient.invalidateQueries({ queryKey: ['attendance_range', userId, classId] });
       queryClient.invalidateQueries({ queryKey: ['user_attendance_date', userId, date] });
+      queryClient.invalidateQueries({ queryKey: ['performance'] });
     },
   });
 
@@ -41,6 +43,23 @@ export function useAttendance(classId: string, date: string) {
     records: query.data || [],
     isLoading: query.isLoading,
     saveAttendance: saveAttendanceMutation.mutateAsync,
+  };
+}
+
+export function useStudentAttendanceForDate(studentId: string, date: string) {
+  const { user } = useAuth();
+  const userId = user?.id || '';
+
+  const query = useQuery({
+    queryKey: ['attendance', 'student_date', userId, studentId, date],
+    queryFn: () =>
+      attendanceService.getAttendanceForStudentDate({ userId, studentId, date }),
+    enabled: Boolean(userId && studentId && date),
+  });
+
+  return {
+    record: query.data ?? null,
+    isLoading: query.isLoading,
   };
 }
 

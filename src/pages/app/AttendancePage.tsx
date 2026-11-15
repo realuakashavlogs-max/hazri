@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useClasses } from '../../hooks/useClasses';
 import { useStudents } from '../../hooks/useStudents';
 import { useAttendance } from '../../hooks/useAttendance';
@@ -25,6 +25,7 @@ import {
   School,
   BellRing,
   X,
+  BookOpenCheck,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -447,6 +448,15 @@ export const AttendancePage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
+                    <Link
+                      to={`/performance?classId=${selectedClassId}&studentId=${student.id}&date=${selectedDate}`}
+                      aria-label={`${t('nav.performance')} (${student.name})`}
+                      title={t('nav.performance')}
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      <BookOpenCheck className="w-5 h-5" />
+                    </Link>
+
                     <button
                       type="button"
                       onClick={() => {

@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard,
   CheckSquare,
+  BookOpenCheck,
   GraduationCap,
   Users,
   BarChart3,
@@ -19,6 +20,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const sidebarLinks = [
     { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
     { to: '/attendance', label: t('nav.attendance'), icon: CheckSquare },
+    { to: '/performance', label: t('nav.performance'), icon: BookOpenCheck },
     { to: '/classes', label: t('nav.classes'), icon: GraduationCap },
     { to: '/students', label: t('nav.students'), icon: Users },
     { to: '/reports', label: t('nav.reports'), icon: BarChart3 },
@@ -28,9 +30,9 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const mobileTabs = [
     { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
     { to: '/attendance', label: t('nav.attendance'), icon: CheckSquare },
+    { to: '/performance', label: t('nav.performance'), icon: BookOpenCheck },
     { to: '/students', label: t('nav.students'), icon: Users },
     { to: '/reports', label: t('nav.reports'), icon: BarChart3 },
-    { to: '/settings', label: t('nav.settings'), icon: Settings },
   ];
 
   return (
@@ -39,7 +41,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
 
       <div className="flex-1 flex">
         {/* Tablet / Desktop Sidebar Navigation (>= 640px) */}
-        <aside className="hidden sm:flex sm:w-56 lg:w-64 shrink-0 flex-col border-e border-[var(--color-border)] bg-[var(--color-surface)] p-3 gap-1 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
+        <aside className="hidden sm:flex sm:w-56 lg:w-64 shrink-0 flex-col border-e border-[var(--color-border)] bg-[var(--color-surface)] p-3 gap-1 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto print:hidden">
           <nav className="flex-1 space-y-1" aria-label="Main navigation">
             {sidebarLinks.map((item) => {
               const Icon = item.icon;
@@ -63,15 +65,25 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           </nav>
 
           {user && (
-            <div className="pt-3 border-t border-[var(--color-border)] px-2 pb-1">
-              {user.full_name && (
-                <p className="text-xs font-bold text-[var(--color-text)] truncate">
-                  {user.full_name}
-                </p>
+            <div className="pt-3 border-t border-[var(--color-border)] px-2 pb-1 flex items-center gap-2.5">
+              {user.avatar_url && (
+                <img
+                  src={user.avatar_url}
+                  alt={user.full_name || user.email}
+                  referrerPolicy="no-referrer"
+                  className="w-8 h-8 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                />
               )}
-              <p className="text-[11px] text-[var(--color-muted)] truncate font-mono">
-                {user.email}
-              </p>
+              <div className="min-w-0">
+                {user.full_name && (
+                  <p className="text-xs font-bold text-[var(--color-text)] truncate">
+                    {user.full_name}
+                  </p>
+                )}
+                <p className="text-[11px] text-[var(--color-muted)] truncate font-mono">
+                  {user.email}
+                </p>
+              </div>
             </div>
           )}
         </aside>
@@ -85,7 +97,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       {/* Mobile Bottom Navigation (<640px) */}
       <nav
         aria-label="Mobile bottom navigation"
-        className="sm:hidden fixed bottom-0 inset-x-0 z-30 bg-[var(--color-surface)]/95 backdrop-blur-md border-t border-[var(--color-border)] px-1 py-1 grid grid-cols-5"
+        className="sm:hidden fixed bottom-0 inset-x-0 z-30 bg-[var(--color-surface)]/95 backdrop-blur-md border-t border-[var(--color-border)] px-1 py-1 grid grid-cols-5 print:hidden"
       >
         {mobileTabs.map((item) => {
           const Icon = item.icon;

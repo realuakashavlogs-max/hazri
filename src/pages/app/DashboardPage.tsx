@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useClasses } from '../../hooks/useClasses';
 import { useStudents } from '../../hooks/useStudents';
 import { useUserAttendanceForDate } from '../../hooks/useAttendance';
+import { useUserPerformanceForDate } from '../../hooks/usePerformance';
 import { isPresentStatus } from '../../lib/statuses';
 import { StatCard } from '../../components/ui/StatCard';
 import { Button } from '../../components/ui/Button';
@@ -11,6 +12,7 @@ import { SkeletonCard } from '../../components/ui/Skeleton';
 import { SyncIndicator } from '../../components/layout/SyncIndicator';
 import {
   CheckCircle2,
+  BookOpenCheck,
   GraduationCap,
   Users,
   BarChart3,
@@ -34,6 +36,7 @@ export const DashboardPage: React.FC = () => {
   const { students, isLoading: studentsLoading } = useStudents();
   const { records: todayRecords, isLoading: attendanceLoading } =
     useUserAttendanceForDate(today);
+  const { records: todayPerfRecords } = useUserPerformanceForDate(today);
 
   const isLoading = classesLoading || studentsLoading || attendanceLoading;
 
@@ -53,18 +56,32 @@ export const DashboardPage: React.FC = () => {
             <SyncIndicator />
           </div>
           <p className="text-sm text-[var(--color-muted)]">
-            {t('dashboard.subtitle')} • <span className="font-mono">{today}</span>
+            {t('dashboard.subtitle')} • <span className="font-mono">{today}</span> •{' '}
+            <span>
+              {t('performance.today_logged', { count: todayPerfRecords.length })}
+            </span>
           </p>
         </div>
 
-        <Button
-          size="lg"
-          onClick={() => navigate('/attendance')}
-          className="gap-2 shadow-md shrink-0"
-        >
-          <CheckCircle2 className="w-5 h-5" />
-          <span>{t('dashboard.mark_today')}</span>
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => navigate('/performance')}
+            className="gap-2"
+          >
+            <BookOpenCheck className="w-5 h-5 text-primary" />
+            <span>{t('nav.performance')}</span>
+          </Button>
+          <Button
+            size="lg"
+            onClick={() => navigate('/attendance')}
+            className="gap-2 shadow-md"
+          >
+            <CheckCircle2 className="w-5 h-5" />
+            <span>{t('dashboard.mark_today')}</span>
+          </Button>
+        </div>
       </div>
 
       {/* Onboarding Banner when teacher has no classes yet */}
@@ -196,7 +213,31 @@ export const DashboardPage: React.FC = () => {
         <h2 className="text-lg font-extrabold text-[var(--color-text)]">
           {t('dashboard.quick_links')}
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+          <Link
+            to="/performance"
+            className="bg-[var(--color-surface)] rounded-2xl p-4 min-h-[64px] border border-[var(--color-border)] hover:shadow-md transition-all duration-150 flex items-center gap-3"
+          >
+            <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <BookOpenCheck className="w-5 h-5" />
+            </div>
+            <span className="text-sm font-bold text-[var(--color-text)]">
+              {t('nav.performance')}
+            </span>
+          </Link>
+
+          <Link
+            to="/performance/reports"
+            className="bg-[var(--color-surface)] rounded-2xl p-4 min-h-[64px] border border-[var(--color-border)] hover:shadow-md transition-all duration-150 flex items-center gap-3"
+          >
+            <div className="w-11 h-11 rounded-xl bg-[#0D9488]/10 text-[#0D9488] flex items-center justify-center shrink-0">
+              <BarChart3 className="w-5 h-5" />
+            </div>
+            <span className="text-sm font-bold text-[var(--color-text)]">
+              {t('performance.reports_link')}
+            </span>
+          </Link>
+
           <Link
             to="/classes"
             className="bg-[var(--color-surface)] rounded-2xl p-4 min-h-[64px] border border-[var(--color-border)] hover:shadow-md transition-all duration-150 flex items-center gap-3"

@@ -5,16 +5,17 @@ import { AppLayout } from '../components/layout/AppLayout';
 
 // Public Pages
 import { LoginPage } from '../pages/public/LoginPage';
-import { ForgotPasswordPage } from '../pages/public/ForgotPasswordPage';
-import { ResetPasswordPage } from '../pages/public/ResetPasswordPage';
 import { NotFoundPage } from '../pages/public/NotFoundPage';
 
 // Teacher App Pages
 import { DashboardPage } from '../pages/app/DashboardPage';
 import { AttendancePage } from '../pages/app/AttendancePage';
+import { DailyPerformancePage } from '../pages/app/DailyPerformancePage';
 import { ClassesPage } from '../pages/app/ClassesPage';
 import { StudentsPage } from '../pages/app/StudentsPage';
+import { StudentProfilePage } from '../pages/app/StudentProfilePage';
 import { ReportsPage } from '../pages/app/ReportsPage';
+import { PerformanceReportsPage } from '../pages/app/PerformanceReportsPage';
 import { SettingsPage } from '../pages/app/SettingsPage';
 
 const FullScreenLoader: React.FC = () => (
@@ -34,10 +35,8 @@ export const AppRoutes: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Auth Routes */}
+        {/* Public Auth Route (Google-only Login) */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Protected Teacher Routes */}
         <Route
@@ -65,6 +64,22 @@ export const AppRoutes: React.FC = () => {
           }
         />
         <Route
+          path="/performance"
+          element={
+            <ProtectedRoute>
+              <DailyPerformancePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/performance/reports"
+          element={
+            <ProtectedRoute>
+              <PerformanceReportsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/classes"
           element={
             <ProtectedRoute>
@@ -77,6 +92,14 @@ export const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute>
               <StudentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/students/:studentId"
+          element={
+            <ProtectedRoute>
+              <StudentProfilePage />
             </ProtectedRoute>
           }
         />

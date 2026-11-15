@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useClasses } from '../../hooks/useClasses';
 import { useStudents } from '../../hooks/useStudents';
 import { useAttendanceRange } from '../../hooks/useAttendance';
@@ -123,6 +124,17 @@ export const ReportsPage: React.FC = () => {
       {/* Header & Exports */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-primary text-white">
+              {t('reports.attendance_tab')}
+            </span>
+            <Link
+              to="/performance/reports"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-[var(--color-muted)] hover:text-[var(--color-text)]"
+            >
+              {t('reports.performance_tab')}
+            </Link>
+          </div>
           <h1 className="text-[22px] sm:text-2xl font-extrabold text-[var(--color-text)]">
             {t('reports.title')}
           </h1>

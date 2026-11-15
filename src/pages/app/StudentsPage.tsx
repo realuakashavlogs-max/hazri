@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { useStudents } from '../../hooks/useStudents';
 import { useClasses } from '../../hooks/useClasses';
@@ -18,6 +19,7 @@ import {
   Edit2,
   Trash2,
   Phone,
+  BookOpenCheck,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -288,9 +290,12 @@ export const StudentsPage: React.FC = () => {
                           #{s.roll_no}
                         </span>
                       )}
-                      <h2 className="font-bold text-base text-[var(--color-text)] truncate">
+                      <Link
+                        to={`/students/${s.id}`}
+                        className="font-bold text-base text-[var(--color-text)] hover:text-primary truncate transition-colors"
+                      >
                         {s.name}
-                      </h2>
+                      </Link>
                     </div>
 
                     {studentClass && (
@@ -311,21 +316,30 @@ export const StudentsPage: React.FC = () => {
                 </div>
 
                 <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
-                  {cleanPhone ? (
-                    <a
-                      href={`https://wa.me/${cleanPhone}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl text-xs font-bold text-[#16A34A] bg-[#16A34A]/10 hover:bg-[#16A34A]/20 transition-colors"
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Link
+                      to={`/students/${s.id}`}
+                      className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 transition-colors"
                     >
-                      <MessageCircle className="w-4 h-4" />
-                      <span>WhatsApp</span>
-                    </a>
-                  ) : (
-                    <span className="text-xs text-[var(--color-muted)]">No Phone</span>
-                  )}
+                      <BookOpenCheck className="w-4 h-4 shrink-0" />
+                      <span>{t('performance.profile_cta')}</span>
+                    </Link>
 
-                  <div className="flex items-center gap-0.5">
+                    {cleanPhone && (
+                      <a
+                        href={`https://wa.me/${cleanPhone}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`WhatsApp ${s.name}`}
+                        title="WhatsApp"
+                        className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl text-xs font-bold text-[#16A34A] bg-[#16A34A]/10 hover:bg-[#16A34A]/20 transition-colors"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-0.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(s)}

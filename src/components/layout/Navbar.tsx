@@ -10,6 +10,7 @@ import {
   Globe,
   LogOut,
   WifiOff,
+  Settings,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -39,7 +40,7 @@ export const Navbar: React.FC = () => {
   }, []);
 
   return (
-    <header className="sticky top-0 z-30 bg-[var(--color-surface)]/95 backdrop-blur-md border-b border-[var(--color-border)]">
+    <header className="sticky top-0 z-30 bg-[var(--color-surface)]/95 backdrop-blur-md border-b border-[var(--color-border)] print:hidden">
       <div className="px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
         {/* Left: Brand + Sync Indicator */}
         <div className="flex items-center gap-2.5 min-w-0">
@@ -59,11 +60,20 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
 
-        {/* Right: Sync (small mobile), Language, Dark Mode, Logout */}
+        {/* Right: Sync (small mobile), Settings, Language, Dark Mode, Logout */}
         <div className="flex items-center gap-1">
           <div className="sm:hidden me-1">
             <SyncIndicator />
           </div>
+
+          <Link
+            to="/settings"
+            aria-label={t('nav.settings')}
+            title={t('nav.settings')}
+            className="sm:hidden min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+          </Link>
 
           <button
             type="button"
