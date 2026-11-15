@@ -59,7 +59,7 @@ drop policy if exists "students_delete_own" on public.students;
 
 create policy "students_select_own"
   on public.students for select
-  using (auth.uid() = user_id);
+  using (auth.uid() = user_id and is_not_blocked());
 
 create policy "students_insert_own"
   on public.students for insert
@@ -74,7 +74,7 @@ create policy "students_insert_own"
 
 create policy "students_update_own"
   on public.students for update
-  using (auth.uid() = user_id)
+  using (auth.uid() = user_id and is_not_blocked())
   with check (
     auth.uid() = user_id
     and is_not_blocked()
@@ -86,7 +86,7 @@ create policy "students_update_own"
 
 create policy "students_delete_own"
   on public.students for delete
-  using (auth.uid() = user_id);
+  using (auth.uid() = user_id and is_not_blocked());
 
 -- Attendance records policies
 drop policy if exists "attendance_select_own" on public.attendance_records;
@@ -99,7 +99,7 @@ drop policy if exists "attendance_delete_own" on public.attendance_records;
 
 create policy "attendance_select_own"
   on public.attendance_records for select
-  using (auth.uid() = user_id);
+  using (auth.uid() = user_id and is_not_blocked());
 
 create policy "attendance_insert_own"
   on public.attendance_records for insert
@@ -117,12 +117,13 @@ create policy "attendance_insert_own"
 
 create policy "attendance_update_own"
   on public.attendance_records for update
-  using (auth.uid() = user_id)
+  using (auth.uid() = user_id and is_not_blocked())
   with check (
     auth.uid() = user_id
+    and is_not_blocked()
     and exists (
       select 1 from public.students s
-      where s.id = student_id and s.user_id = auth.uid() and s.class_id = student_daily_performance.class_id
+      where s.id = student_id and s.user_id = auth.uid() and s.class_id = attendance_records.class_id
     )
     and exists (
       select 1 from public.classes c
@@ -132,7 +133,7 @@ create policy "attendance_update_own"
 
 create policy "attendance_delete_own"
   on public.attendance_records for delete
-  using (auth.uid() = user_id);
+  using (auth.uid() = user_id and is_not_blocked());
 
 -- 3. New Table: student_daily_performance
 create table if not exists public.student_daily_performance (
@@ -235,15 +236,16 @@ drop policy if exists "sdp_delete_own" on public.student_daily_performance;
 
 create policy "sdp_select_own"
   on public.student_daily_performance for select
-  using (auth.uid() = user_id);
+  using (auth.uid() = user_id and is_not_blocked());
 
 create policy "sdp_insert_own"
   on public.student_daily_performance for insert
   with check (
     auth.uid() = user_id
+    and is_not_blocked()
     and exists (
       select 1 from public.students s
-      where s.id = student_id and s.user_id = auth.uid()
+      where s.id = student_id and s.user_id = auth.uid() and s.class_id = student_daily_performance.class_id
     )
     and exists (
       select 1 from public.classes c
@@ -253,9 +255,10 @@ create policy "sdp_insert_own"
 
 create policy "sdp_update_own"
   on public.student_daily_performance for update
-  using (auth.uid() = user_id)
+  using (auth.uid() = user_id and is_not_blocked())
   with check (
     auth.uid() = user_id
+    and is_not_blocked()
     and exists (
       select 1 from public.students s
       where s.id = student_id and s.user_id = auth.uid()
@@ -268,4 +271,4 @@ create policy "sdp_update_own"
 
 create policy "sdp_delete_own"
   on public.student_daily_performance for delete
-  using (auth.uid() = user_id);
+  using (auth.uid() = user_id and is_not_blocked());
