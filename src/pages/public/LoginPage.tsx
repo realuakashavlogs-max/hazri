@@ -18,11 +18,12 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const LoginPage: React.FC = () => {
-  const { user, loading, signIn } = useAuth();
+  const { user, loading, signIn, signInWithGoogle } = useAuth();
   const { effectiveAppName } = useSettings();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const {
     register,
@@ -75,6 +76,29 @@ export const LoginPage: React.FC = () => {
             </div>
           )}
 
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                setServerError(null);
+                setGoogleLoading(true);
+                await signInWithGoogle();
+              } catch (err: any) {
+                setServerError(err.message || 'Google sign-in could not be started. Please try again.');
+                setGoogleLoading(false);
+              }
+            }}
+            disabled={googleLoading}
+            className="w-full h-12 mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-bg)] disabled:opacity-60 font-semibold flex items-center justify-center gap-3 transition-colors"
+          >
+            <span aria-hidden="true" className="font-extrabold text-lg"><span className="text-blue-600">G</span></span>
+            {googleLoading ? 'Connecting to Google…' : 'Continue with Google'}
+          </button>
+          <div className="flex items-center gap-3 mb-4 text-xs text-[var(--color-muted)]">
+            <span className="h-px flex-1 bg-[var(--color-border)]" />
+            <span>OR CONTINUE WITH EMAIL</span>
+            <span className="h-px flex-1 bg-[var(--color-border)]" />
+          </div>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Input
               label={t('auth.email')}
