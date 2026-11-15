@@ -42,11 +42,11 @@ create policy "classes_insert_own"
 create policy "classes_update_own"
   on public.classes for update
   using (auth.uid() = user_id and is_not_blocked())
-  with check (auth.uid() = user_id);
+  with check (auth.uid() = user_id and is_not_blocked());
 
 create policy "classes_delete_own"
   on public.classes for delete
-  using (auth.uid() = user_id);
+  using (auth.uid() = user_id and is_not_blocked());
 
 -- Students policies (also verify referenced class belongs to the same teacher)
 drop policy if exists "students_select_own" on public.students;
@@ -77,6 +77,7 @@ create policy "students_update_own"
   using (auth.uid() = user_id)
   with check (
     auth.uid() = user_id
+    and is_not_blocked()
     and exists (
       select 1 from public.classes c
       where c.id = class_id and c.user_id = auth.uid()
@@ -106,7 +107,7 @@ create policy "attendance_insert_own"
     auth.uid() = user_id
     and exists (
       select 1 from public.students s
-      where s.id = student_id and s.user_id = auth.uid() and s.class_id = class_id
+      where s.id = student_id and s.user_id = auth.uid() and s.class_id = attendance_records.class_id
     )
     and exists (
       select 1 from public.classes c
@@ -121,7 +122,7 @@ create policy "attendance_update_own"
     auth.uid() = user_id
     and exists (
       select 1 from public.students s
-      where s.id = student_id and s.user_id = auth.uid()
+      where s.id = student_id and s.user_id = auth.uid() and s.class_id = student_daily_performance.class_id
     )
     and exists (
       select 1 from public.classes c
