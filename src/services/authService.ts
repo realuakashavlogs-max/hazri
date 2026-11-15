@@ -18,6 +18,18 @@ export function mapSupabaseUser(authUser: User): AuthUser {
 }
 
 export const authService = {
+  async signInWithGoogle(): Promise<void> {
+    ensureConfigured();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+        queryParams: { access_type: 'offline', prompt: 'select_account' },
+      },
+    });
+    if (error) throw error;
+  },
+
   async signIn(email: string, password: string): Promise<AuthUser> {
     ensureConfigured();
 
