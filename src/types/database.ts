@@ -493,6 +493,23 @@ export type Database = {
           performance_count: number;
         }[];
       };
+      admin_dashboard_overview_v2: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          id: string;
+          email: string;
+          full_name: string | null;
+          role: string;
+          is_blocked: boolean;
+          created_at: string;
+          last_sign_in_at: string | null;
+          is_active: boolean;
+          classes_count: number;
+          students_count: number;
+          attendance_count: number;
+          performance_count: number;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;
