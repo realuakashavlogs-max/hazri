@@ -107,3 +107,28 @@ export async function getTotalPendingSyncCount(userId?: string): Promise<number>
   ]);
   return att + perf.length;
 }
+
+export async function clearOfflineDataForUser(userId?: string): Promise<void> {
+  try {
+    const db = await getDB();
+    if (!userId) {
+      const tx = db.transaction(['pending_attendance', 'pending_performance'], 'readwrite');
+      await tx.objectStore('pending_attendance').clear();
+      await tx.objectStore('pending_performance').clear();
+      await tx.done;
+      return;
+    }
+
+    const [att, perf] = await Promise.all([
+      db.getAll('pending_attendance'),
+      db.getAll('pending_performance'),
+    ]);
+
+    const attIds = att.filter((item) => item.user_id === userId).map((item) => item.id);
+    const perfIds = perf.filter((item) => item.user_id === userId).map((item) => item.id);
+
+    await Promise.all([clearSyncedAttendance(attIds), clearSyncedPerformance(perfIds)]);
+  } catch {
+    // Ignore IndexedDB cleanup errors on restricted browsers
+  }
+}

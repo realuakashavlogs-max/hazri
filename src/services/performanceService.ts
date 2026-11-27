@@ -17,7 +17,7 @@ function ensureConfigured() {
   }
 }
 
-const PERFORMANCE_COLUMNS = [
+export const PERFORMANCE_COLUMNS = [
   'id',
   'user_id',
   'student_id',
@@ -61,12 +61,45 @@ const PERFORMANCE_COLUMNS = [
   'updated_at',
 ].join(', ');
 
+export function normalizeLineCount(listened: boolean, lines: number | null | undefined): number {
+  if (!listened) return 0;
+  if (typeof lines !== 'number' || !Number.isFinite(lines)) return 0;
+  return Math.max(0, Math.trunc(lines));
+}
+
+export function normalizePerformanceInput(
+  input: StudentDailyPerformanceInput
+): StudentDailyPerformanceInput {
+  const sabaqLines = normalizeLineCount(input.sabaq_listened, input.sabaq_lines);
+  const sabqiLines = normalizeLineCount(input.sabqi_listened, input.sabqi_lines);
+  const manzilLines = normalizeLineCount(input.manzil_listened, input.manzil_lines);
+
+  return {
+    ...input,
+    sabaq_lines: sabaqLines,
+    sabqi_lines: sabqiLines,
+    manzil_lines: manzilLines,
+    sabaq_completed: input.sabaq_listened,
+    sabqi_completed: input.sabqi_listened,
+    manzil_completed: input.manzil_listened,
+  };
+}
+
+function hydrateRecord(row: StudentDailyPerformance): StudentDailyPerformance {
+  return {
+    ...row,
+    sabaq_lines: normalizeLineCount(row.sabaq_listened, row.sabaq_lines),
+    sabqi_lines: normalizeLineCount(row.sabqi_listened, row.sabqi_lines),
+    manzil_lines: normalizeLineCount(row.manzil_listened, row.manzil_lines),
+  };
+}
+
 function toPendingRecord(
   input: StudentDailyPerformanceInput,
   updatedAt: string
 ): PendingPerformanceWrite {
   return {
-    ...input,
+    ...normalizePerformanceInput(input),
     id: `${input.user_id}_${input.student_id}_${input.record_date}`,
     updated_at: updatedAt,
   };
@@ -81,19 +114,22 @@ function mergePendingPerformance(
   remote: StudentDailyPerformance[],
   pending: PendingPerformanceWrite[]
 ): StudentDailyPerformance[] {
-  if (pending.length === 0) return remote;
+  if (pending.length === 0) return remote.map(hydrateRecord);
   const map = new Map<string, StudentDailyPerformance>(
-    remote.map((r) => [`${r.user_id}_${r.student_id}_${r.record_date}`, r])
+    remote.map((r) => [`${r.user_id}_${r.student_id}_${r.record_date}`, hydrateRecord(r)])
   );
 
   for (const p of pending) {
     const existing = map.get(p.id);
     const { id: localKey, ...rest } = p;
-    map.set(p.id, {
-      ...rest,
-      id: existing?.id || localKey,
-      created_at: existing?.created_at || p.updated_at,
-    });
+    map.set(
+      p.id,
+      hydrateRecord({
+        ...rest,
+        id: existing?.id || localKey,
+        created_at: existing?.created_at || p.updated_at,
+      })
+    );
   }
 
   return Array.from(map.values()).sort((a, b) =>
@@ -126,11 +162,11 @@ export const performanceService = {
       .maybeSingle();
 
     if (error) throw error;
-    const remoteRow = data as StudentDailyPerformance | null;
+    const remoteRow = (data as unknown) as StudentDailyPerformance | null;
     if (pendingMatch) {
       return mergePendingPerformance(remoteRow ? [remoteRow] : [], [pendingMatch])[0] || null;
     }
-    return remoteRow;
+    return remoteRow ? hydrateRecord(remoteRow) : null;
   },
 
   async getPerformanceForStudent(params: {
@@ -263,15 +299,19 @@ export const performanceService = {
     const now = new Date().toISOString();
     const pendingRow = toPendingRecord(input, now);
 
-    // Sync attendance record alongside daily performance (without creating loop)
-    const syncAttendancePromise = attendanceService.saveAttendance(input.user_id, [
-      {
-        classId: input.class_id,
-        studentId: input.student_id,
-        attendanceDate: input.record_date,
-        status: input.attendance_status,
-      },
-    ]);
+    // Sync attendance record alongside daily performance without creating a feedback update loop
+    const syncAttendancePromise = attendanceService.saveAttendance(
+      input.user_id,
+      [
+        {
+          classId: input.class_id,
+          studentId: input.student_id,
+          attendanceDate: input.record_date,
+          status: input.attendance_status,
+        },
+      ],
+      { syncPerformance: false }
+    );
 
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       await Promise.all([enqueuePerformance([pendingRow]), syncAttendancePromise]);
@@ -297,7 +337,7 @@ export const performanceService = {
 
       return {
         queuedOffline: false,
-        record: (data as unknown) as StudentDailyPerformance,
+        record: hydrateRecord((data as unknown) as StudentDailyPerformance),
       };
     } catch (err: any) {
       const isNetworkErr =
@@ -333,6 +373,7 @@ export const performanceService = {
     if (
       !isSupabaseConfigured ||
       !supabase ||
+      !userId ||
       (typeof navigator !== 'undefined' && !navigator.onLine)
     ) {
       return 0;

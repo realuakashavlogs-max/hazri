@@ -5,6 +5,7 @@ import { SettingsProvider } from './contexts/SettingsContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { AppRoutes } from './routes/AppRoutes';
 import { SupabaseNotConfigured } from './components/SupabaseNotConfigured';
+import { PwaSupportBanner } from './components/pwa/PwaSupportBanner';
 import { isSupabaseConfigured } from './lib/supabaseClient';
 import './lib/i18n';
 
@@ -28,6 +29,7 @@ export function App() {
         <AuthProvider>
           <SettingsProvider>
             <AppRoutes />
+            <PwaSupportBanner />
           </SettingsProvider>
         </AuthProvider>
       </ToastProvider>

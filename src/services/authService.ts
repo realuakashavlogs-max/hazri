@@ -1,5 +1,9 @@
 import type { User } from '@supabase/supabase-js';
-import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import {
+  supabase,
+  isSupabaseConfigured,
+  getGoogleOAuthRedirectUrl,
+} from '../lib/supabaseClient';
 import type { AuthUser } from '../types/database';
 
 function ensureConfigured() {
@@ -9,12 +13,13 @@ function ensureConfigured() {
 }
 
 export function mapSupabaseUser(authUser: User): AuthUser {
-  const metaName = authUser.user_metadata?.full_name;
+  const metaName = authUser.user_metadata?.full_name || authUser.user_metadata?.name;
+  const avatar = authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture;
   return {
     id: authUser.id,
     email: authUser.email || '',
     full_name: typeof metaName === 'string' && metaName.trim() ? metaName.trim() : null,
-    avatar_url: typeof authUser.user_metadata?.avatar_url === 'string' ? authUser.user_metadata.avatar_url : null,
+    avatar_url: typeof avatar === 'string' && avatar.trim() ? avatar.trim() : null,
   };
 }
 
@@ -24,25 +29,11 @@ export const authService = {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: 'https://hazri.suffah.workers.dev/dashboard',
+        redirectTo: getGoogleOAuthRedirectUrl(),
         queryParams: { access_type: 'offline', prompt: 'select_account' },
       },
     });
     if (error) throw error;
-  },
-
-  async signIn(email: string, password: string): Promise<AuthUser> {
-    ensureConfigured();
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) throw error;
-    if (!data.user) throw new Error('No user returned after login');
-
-    return mapSupabaseUser(data.user);
   },
 
   async signOut(): Promise<void> {
@@ -50,19 +41,5 @@ export const authService = {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
     }
-  },
-
-  async resetPassword(email: string): Promise<void> {
-    ensureConfigured();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    if (error) throw error;
-  },
-
-  async updatePassword(newPassword: string): Promise<void> {
-    ensureConfigured();
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) throw error;
   },
 };

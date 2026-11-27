@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Student, AttendanceRecord, StudentDailyPerformance } from '../types/database';
 import { isPresentStatus } from './statuses';
-import { DAILY_RESULT_MAP, computePerformanceSummary } from './performanceStats';
+import { computePerformanceSummary } from './performanceStats';
 
 export function exportAttendanceCsv(params: {
   className: string;
@@ -140,7 +140,7 @@ export function exportPerformancePdf(params: {
 
   doc.setFontSize(18);
   doc.setTextColor(37, 99, 235);
-  doc.text(`${appName} - Daily Sabaq & Performance Report`, 14, 18);
+  doc.text(`${appName} - Daily Sabaq & Attendance Report`, 14, 18);
 
   doc.setFontSize(11);
   doc.setTextColor(50, 50, 50);
@@ -150,7 +150,7 @@ export function exportPerformancePdf(params: {
   const summary = computePerformanceSummary(records);
   doc.setFontSize(10);
   doc.text(
-    `Records: ${summary.totalDays} | Present: ${summary.daysPresent} | Absent: ${summary.daysAbsent} | Sabaq Done: ${summary.sabaqCompletedCount} | Sabqi Done: ${summary.sabqiCompletedCount} | Manzil Done: ${summary.manzilCompletedCount} | Mistakes: ${summary.totalMistakes} | Atak: ${summary.totalAtak} | Avg: ${summary.averageResultLabel} (${summary.averageScore}/5)`,
+    `Records: ${summary.totalDays} | Present: ${summary.daysPresent} | Absent: ${summary.daysAbsent} | Sabaq: ${summary.sabaqListenedCount} (${summary.totalSabaqLines} lines) | Sabqi: ${summary.sabqiListenedCount} (${summary.totalSabqiLines} lines) | Manzil: ${summary.manzilListenedCount} (${summary.totalManzilLines} lines)`,
     14,
     38
   );
@@ -160,27 +160,19 @@ export function exportPerformancePdf(params: {
 
   const tableData = sorted.map((r) => {
     const st = studentMap.get(r.student_id);
-    const sabaqInfo = r.sabaq_listened
-      ? `${r.sabaq_surah || '-'}${r.sabaq_para ? ` (Juz ${r.sabaq_para})` : ''} [${r.sabaq_completed ? 'Done' : 'Incomplete'}]`
-      : 'Not Listened';
-    const sabqiInfo = r.sabqi_listened
-      ? `${r.sabqi_details || '-'}${r.sabqi_start_page ? ` (p.${r.sabqi_start_page}-${r.sabqi_end_page || r.sabqi_start_page})` : ''} [${r.sabqi_completed ? 'Done' : 'Incomplete'}]`
-      : 'Not Listened';
-    const manzilInfo = r.manzil_listened
-      ? `${r.manzil_details || '-'}${r.manzil_start_page ? ` (p.${r.manzil_start_page}-${r.manzil_end_page || r.manzil_start_page})` : ''} [${r.manzil_completed ? 'Done' : 'Incomplete'}]`
-      : 'Not Listened';
+    const sabaqLines = r.sabaq_listened ? r.sabaq_lines ?? 0 : 0;
+    const sabqiLines = r.sabqi_listened ? r.sabqi_lines ?? 0 : 0;
+    const manzilLines = r.manzil_listened ? r.manzil_lines ?? 0 : 0;
+    const totalLines = sabaqLines + sabqiLines + manzilLines;
 
     return [
       r.record_date,
       st ? `${st.roll_no ? `#${st.roll_no} ` : ''}${st.name}` : '-',
       r.attendance_status.toUpperCase(),
-      sabaqInfo,
-      sabqiInfo,
-      manzilInfo,
-      `${r.total_mistakes} (${r.major_mistakes}M/${r.minor_mistakes}m)`,
-      `${r.atak_count}`,
-      DAILY_RESULT_MAP[r.daily_result]?.label_en || r.daily_result,
-      r.teacher_remarks || r.incomplete_reason || '-',
+      r.sabaq_listened ? `Yes (${sabaqLines} lines)` : 'No (0 lines)',
+      r.sabqi_listened ? `Yes (${sabqiLines} lines)` : 'No (0 lines)',
+      r.manzil_listened ? `Yes (${manzilLines} lines)` : 'No (0 lines)',
+      totalLines.toString(),
     ];
   });
 
@@ -191,25 +183,14 @@ export function exportPerformancePdf(params: {
 
   runAutoTable(doc, {
     startY: 44,
-    head: [[
-      'Date',
-      'Student',
-      'Attend',
-      'Sabaq',
-      'Sabqi',
-      'Manzil',
-      'Mistakes',
-      'Atak',
-      'Result',
-      'Remarks',
-    ]],
+    head: [['Date', 'Student', 'Attendance', 'Sabaq', 'Sabqi', 'Manzil', 'Total Lines']],
     body: tableData,
     theme: 'grid',
-    styles: { fontSize: 8, cellPadding: 2 },
+    styles: { fontSize: 9, cellPadding: 2.5 },
     headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255] },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     margin: { left: 14, right: 14 },
   });
 
-  doc.save(`PerformanceReport_${dateRange.start}_to_${dateRange.end}.pdf`);
+  doc.save(`SabaqReport_${dateRange.start}_to_${dateRange.end}.pdf`);
 }

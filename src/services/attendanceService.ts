@@ -40,8 +40,9 @@ async function getStatusIds(userId: string): Promise<Map<AttendanceStatusKey, st
   const map = new Map<AttendanceStatusKey, string>(
     ((data || []) as AttendanceStatusRow[]).map((status) => [status.key, status.id])
   );
-  const missing = (['present', 'absent', 'late', 'leave'] as AttendanceStatusKey[])
-    .filter((key) => !map.has(key));
+  const missing = (['present', 'absent', 'late', 'leave'] as AttendanceStatusKey[]).filter(
+    (key) => !map.has(key)
+  );
 
   if (missing.length) {
     throw new Error(
@@ -59,7 +60,9 @@ function mapRemoteRecords(
   return rows.map((row) => {
     const status = keysById.get(row.status_id);
     if (!status) {
-      throw new Error('An attendance record references an unknown status. Please contact the administrator.');
+      throw new Error(
+        'An attendance record references an unknown status. Please contact the administrator.'
+      );
     }
     return {
       id: row.id,
@@ -81,7 +84,9 @@ function toSupabaseUpsertRows(
 ) {
   return items.map(({ id: _localKey, status, ...row }) => {
     const status_id = statusIds.get(status);
-    if (!status_id) throw new Error(`Attendance status "${status}" is not configured for this account.`);
+    if (!status_id) {
+      throw new Error(`Attendance status "${status}" is not configured for this account.`);
+    }
     return { ...row, status_id };
   });
 }
@@ -121,9 +126,12 @@ export const attendanceService = {
     date: string;
   }): Promise<AttendanceRecord[]> {
     ensureConfigured();
-    const pendingAll = await getAllPendingAttendance();
+    const pendingAll = await getAllPendingAttendance(params.userId);
     const pendingMatching = pendingAll.filter(
-      (p) => p.user_id === params.userId && p.class_id === params.classId && p.attendance_date === params.date
+      (p) =>
+        p.user_id === params.userId &&
+        p.class_id === params.classId &&
+        p.attendance_date === params.date
     );
 
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -152,7 +160,7 @@ export const attendanceService = {
     date: string;
   }): Promise<AttendanceRecord | null> {
     ensureConfigured();
-    const pendingAll = await getAllPendingAttendance();
+    const pendingAll = await getAllPendingAttendance(params.userId);
     const pendingMatching = pendingAll.find(
       (p) =>
         p.user_id === params.userId &&
@@ -178,15 +186,16 @@ export const attendanceService = {
     const remoteRecords = data
       ? mapRemoteRecords([data as AttendanceDbRow], statusIds)
       : [];
-    if (pendingMatching) {
-      return mergePendingRecords(remoteRecords, [pendingMatching], params.userId)[0] || null;
-    }
-    return remoteRecords[0] || null;
+    return mergePendingRecords(
+      remoteRecords,
+      pendingMatching ? [pendingMatching] : [],
+      params.userId
+    )[0] || null;
   },
 
   async getAttendanceForUserDate(userId: string, date: string): Promise<AttendanceRecord[]> {
     ensureConfigured();
-    const pendingAll = await getAllPendingAttendance();
+    const pendingAll = await getAllPendingAttendance(userId);
     const pendingMatching = pendingAll.filter(
       (p) => p.user_id === userId && p.attendance_date === date
     );
@@ -203,7 +212,11 @@ export const attendanceService = {
       .eq('attendance_date', date);
 
     if (error) throw error;
-    return mergePendingRecords(mapRemoteRecords((data || []) as AttendanceDbRow[], statusIds), pendingMatching, userId);
+    return mergePendingRecords(
+      mapRemoteRecords((data || []) as AttendanceDbRow[], statusIds),
+      pendingMatching,
+      userId
+    );
   },
 
   async getAttendanceForRange(params: {
@@ -213,7 +226,7 @@ export const attendanceService = {
     endDate: string;
   }): Promise<AttendanceRecord[]> {
     ensureConfigured();
-    const pendingAll = await getAllPendingAttendance();
+    const pendingAll = await getAllPendingAttendance(params.userId);
     const pendingMatching = pendingAll.filter(
       (p) =>
         p.user_id === params.userId &&
@@ -237,34 +250,11 @@ export const attendanceService = {
       .order('attendance_date', { ascending: false });
 
     if (error) throw error;
-    return mergePendingRecords(mapRemoteRecords((data || []) as AttendanceDbRow[], statusIds), pendingMatching, params.userId);
-  },
-
-
-  async getAttendanceForStudentDate(params: {
-    userId: string;
-    studentId: string;
-    date: string;
-  }): Promise<AttendanceRecord | null> {
-    ensureConfigured();
-    const pendingAll = await getAllPendingAttendance(params.userId);
-    const pending = pendingAll.find(
-      (p) => p.student_id === params.studentId && p.attendance_date === params.date
+    return mergePendingRecords(
+      mapRemoteRecords((data || []) as AttendanceDbRow[], statusIds),
+      pendingMatching,
+      params.userId
     );
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      return pending ? mergePendingRecords([], [pending], params.userId)[0] || null : null;
-    }
-    const statusIds = await getStatusIds(params.userId);
-    const { data, error } = await supabase
-      .from('attendance_records')
-      .select('id, user_id, student_id, class_id, attendance_date, status_id, note, created_at, updated_at')
-      .eq('user_id', params.userId)
-      .eq('student_id', params.studentId)
-      .eq('attendance_date', params.date)
-      .maybeSingle();
-    if (error) throw error;
-    const remote = data ? mapRemoteRecords([data as AttendanceDbRow], statusIds) : [];
-    return mergePendingRecords(remote, pending ? [pending] : [], params.userId)[0] || null;
   },
 
   async saveAttendance(
@@ -324,7 +314,7 @@ export const attendanceService = {
           )
         );
       } catch {
-        // Non-blocking: attendance save succeeds even if daily performance table is not yet migrated.
+        // Non-blocking: attendance save succeeds even if daily performance record does not exist.
       }
     }
 
@@ -341,7 +331,7 @@ export const attendanceService = {
       return 0;
     }
 
-    const pending = (await getAllPendingAttendance()).filter((item) => item.user_id === userId);
+    const pending = await getAllPendingAttendance(userId);
     if (pending.length === 0) return 0;
 
     try {

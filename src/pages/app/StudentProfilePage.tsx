@@ -12,7 +12,6 @@ import {
   Phone,
   RotateCcw,
   Layers,
-  AlertTriangle,
   XCircle,
 } from 'lucide-react';
 import { useStudents } from '../../hooks/useStudents';
@@ -25,7 +24,7 @@ import { StatCard } from '../../components/ui/StatCard';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FIXED_STATUS_MAP } from '../../lib/statuses';
-import { DAILY_RESULT_MAP, computePerformanceSummary } from '../../lib/performanceStats';
+import { computePerformanceSummary } from '../../lib/performanceStats';
 import { normalizePhoneNumber } from '../../lib/whatsapp';
 import type { StudentDailyPerformance } from '../../types/database';
 
@@ -193,22 +192,22 @@ export const StudentProfilePage: React.FC = () => {
           icon={<CheckCircle2 className="w-4 h-4" />}
         />
         <StatCard
-          title={t('performance.sabaq_done')}
-          value={summary.sabaqCompletedCount}
+          title={t('performance.sabaq_lines_total')}
+          value={summary.totalSabaqLines}
           colorHex="#2563EB"
           icon={<BookOpen className="w-4 h-4" />}
         />
         <StatCard
-          title={t('performance.total_mistakes')}
-          value={summary.totalMistakes}
-          colorHex="#DC2626"
-          icon={<AlertTriangle className="w-4 h-4" />}
+          title={t('performance.sabqi_lines_total')}
+          value={summary.totalSabqiLines}
+          colorHex="#0D9488"
+          icon={<RotateCcw className="w-4 h-4" />}
         />
         <StatCard
-          title={t('performance.total_atak')}
-          value={summary.totalAtak}
+          title={t('performance.manzil_lines_total')}
+          value={summary.totalManzilLines}
           colorHex="#7C3AED"
-          icon={<RotateCcw className="w-4 h-4" />}
+          icon={<Layers className="w-4 h-4" />}
         />
       </div>
 
@@ -320,7 +319,10 @@ export const StudentProfilePage: React.FC = () => {
           <div className="space-y-2.5">
             {historyRecords.map((rec) => {
               const attMeta = FIXED_STATUS_MAP[rec.attendance_status];
-              const resMeta = DAILY_RESULT_MAP[rec.daily_result];
+              const sabaqLines = rec.sabaq_listened ? rec.sabaq_lines ?? 0 : 0;
+              const sabqiLines = rec.sabqi_listened ? rec.sabqi_lines ?? 0 : 0;
+              const manzilLines = rec.manzil_listened ? rec.manzil_lines ?? 0 : 0;
+
               return (
                 <button
                   key={rec.id}
@@ -339,28 +341,19 @@ export const StudentProfilePage: React.FC = () => {
                       >
                         {attMeta.label_en}
                       </span>
-                      <span
-                        className="px-2 py-0.5 rounded-full text-[11px] font-bold text-white"
-                        style={{ backgroundColor: resMeta.color }}
-                      >
-                        {resMeta.label_en}
-                      </span>
                     </div>
-                    <p className="text-xs text-[var(--color-muted)] truncate">
-                      Sabaq: {rec.sabaq_surah || '—'}
-                      {rec.sabaq_para ? ` (Para ${rec.sabaq_para})` : ''} •{' '}
-                      {rec.sabaq_completed ? 'Done' : 'Incomplete'} | Sabqi:{' '}
-                      {rec.sabqi_completed ? 'Done' : 'Incomplete'} | Manzil:{' '}
-                      {rec.manzil_completed ? 'Done' : 'Incomplete'}
+                    <p className="text-xs text-[var(--color-muted)]">
+                      Sabaq: {rec.sabaq_listened ? `${t('common.yes')} (${sabaqLines})` : `${t('common.no')} (0)`} •{' '}
+                      Sabqi: {rec.sabqi_listened ? `${t('common.yes')} (${sabqiLines})` : `${t('common.no')} (0)`} •{' '}
+                      Manzil: {rec.manzil_listened ? `${t('common.yes')} (${manzilLines})` : `${t('common.no')} (0)`}
                     </p>
                   </div>
 
                   <div className="flex items-center gap-3 text-xs font-bold shrink-0">
-                    <span className="text-[#DC2626]">
-                      Mistakes: {rec.total_mistakes}
+                    <span className="font-mono text-[var(--color-text)]">
+                      {sabaqLines + sabqiLines + manzilLines} {t('performance.lines_unit')}
                     </span>
-                    <span className="text-[#7C3AED]">Atak: {rec.atak_count}</span>
-                    <span className="text-primary underline">View</span>
+                    <span className="text-primary underline">{t('performance.view_record')}</span>
                   </div>
                 </button>
               );
@@ -388,104 +381,70 @@ export const StudentProfilePage: React.FC = () => {
                 {FIXED_STATUS_MAP[detailRecord.attendance_status].label_en} •{' '}
                 {FIXED_STATUS_MAP[detailRecord.attendance_status].label_ur}
               </span>
-              <span
-                className="px-2.5 py-1 rounded-full text-xs font-bold text-white"
-                style={{
-                  backgroundColor: DAILY_RESULT_MAP[detailRecord.daily_result].color,
-                }}
-              >
-                {DAILY_RESULT_MAP[detailRecord.daily_result].label_en} •{' '}
-                {DAILY_RESULT_MAP[detailRecord.daily_result].label_ur}
-              </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] space-y-1">
-              <div className="font-bold flex items-center gap-1.5">
-                <BookOpen className="w-4 h-4 text-primary" />
-                <span>Sabaq</span>
-                {detailRecord.sabaq_completed ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A]" />
+            <div className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] flex items-center justify-between">
+              <div className="font-bold flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-[#2563EB]" />
+                <span>{t('performance.section_sabaq')}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-bold">
+                {detailRecord.sabaq_listened ? (
+                  <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />
                 ) : (
-                  <XCircle className="w-3.5 h-3.5 text-[#DC2626]" />
+                  <XCircle className="w-4 h-4 text-[#DC2626]" />
                 )}
+                <span>
+                  {detailRecord.sabaq_listened ? t('common.yes') : t('common.no')} •{' '}
+                  <span className="font-mono">
+                    {detailRecord.sabaq_listened ? detailRecord.sabaq_lines ?? 0 : 0}{' '}
+                    {t('performance.lines_unit')}
+                  </span>
+                </span>
               </div>
-              <p className="text-xs text-[var(--color-muted)]">
-                Listened: {detailRecord.sabaq_listened ? 'Yes' : 'No'} | Completed:{' '}
-                {detailRecord.sabaq_completed ? 'Yes' : 'No'} | Surah:{' '}
-                {detailRecord.sabaq_surah || '-'} | Para:{' '}
-                {detailRecord.sabaq_para || '-'}
-              </p>
-              <p className="text-xs text-[var(--color-muted)]">
-                Ayahs: {detailRecord.sabaq_start_ayah ?? '-'} –{' '}
-                {detailRecord.sabaq_end_ayah ?? '-'} | Pages:{' '}
-                {detailRecord.sabaq_start_page ?? '-'} –{' '}
-                {detailRecord.sabaq_end_page ?? '-'} | Grade:{' '}
-                {detailRecord.sabaq_grade || '-'}
-              </p>
-              {detailRecord.sabaq_remarks && (
-                <p className="text-xs italic">{detailRecord.sabaq_remarks}</p>
-              )}
             </div>
 
-            <div className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] space-y-1">
-              <div className="font-bold flex items-center gap-1.5">
+            <div className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] flex items-center justify-between">
+              <div className="font-bold flex items-center gap-2">
                 <RotateCcw className="w-4 h-4 text-[#0D9488]" />
-                <span>Sabqi</span>
+                <span>{t('performance.section_sabqi')}</span>
               </div>
-              <p className="text-xs text-[var(--color-muted)]">
-                Listened: {detailRecord.sabqi_listened ? 'Yes' : 'No'} | Completed:{' '}
-                {detailRecord.sabqi_completed ? 'Yes' : 'No'} | Details:{' '}
-                {detailRecord.sabqi_details || '-'} | Pages:{' '}
-                {detailRecord.sabqi_start_page ?? '-'} –{' '}
-                {detailRecord.sabqi_end_page ?? '-'}
-              </p>
-              {detailRecord.sabqi_remarks && (
-                <p className="text-xs italic">{detailRecord.sabqi_remarks}</p>
-              )}
+              <div className="flex items-center gap-2 text-xs font-bold">
+                {detailRecord.sabqi_listened ? (
+                  <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />
+                ) : (
+                  <XCircle className="w-4 h-4 text-[#DC2626]" />
+                )}
+                <span>
+                  {detailRecord.sabqi_listened ? t('common.yes') : t('common.no')} •{' '}
+                  <span className="font-mono">
+                    {detailRecord.sabqi_listened ? detailRecord.sabqi_lines ?? 0 : 0}{' '}
+                    {t('performance.lines_unit')}
+                  </span>
+                </span>
+              </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] space-y-1">
-              <div className="font-bold flex items-center gap-1.5">
+            <div className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] flex items-center justify-between">
+              <div className="font-bold flex items-center gap-2">
                 <Layers className="w-4 h-4 text-[#7C3AED]" />
-                <span>Manzil</span>
+                <span>{t('performance.section_manzil')}</span>
               </div>
-              <p className="text-xs text-[var(--color-muted)]">
-                Listened: {detailRecord.manzil_listened ? 'Yes' : 'No'} | Completed:{' '}
-                {detailRecord.manzil_completed ? 'Yes' : 'No'} | Details:{' '}
-                {detailRecord.manzil_details || '-'} | Pages:{' '}
-                {detailRecord.manzil_start_page ?? '-'} –{' '}
-                {detailRecord.manzil_end_page ?? '-'}
-              </p>
-              {detailRecord.manzil_remarks && (
-                <p className="text-xs italic">{detailRecord.manzil_remarks}</p>
-              )}
-            </div>
-
-            <div className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] text-xs space-y-1">
-              <div className="font-bold text-sm">Mistakes Breakdown</div>
-              <p>
-                Total: <strong>{detailRecord.total_mistakes}</strong> | Major:{' '}
-                <strong>{detailRecord.major_mistakes}</strong> | Minor:{' '}
-                <strong>{detailRecord.minor_mistakes}</strong> | Atak:{' '}
-                <strong>{detailRecord.atak_count}</strong> | Repeated:{' '}
-                <strong>{detailRecord.repeated_mistakes}</strong>
-              </p>
-            </div>
-
-            {(detailRecord.incomplete_reason || detailRecord.teacher_remarks) && (
-              <div className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] text-xs space-y-1">
-                {detailRecord.incomplete_reason && (
-                  <p>
-                    <strong>Incomplete Reason:</strong> {detailRecord.incomplete_reason}
-                  </p>
+              <div className="flex items-center gap-2 text-xs font-bold">
+                {detailRecord.manzil_listened ? (
+                  <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />
+                ) : (
+                  <XCircle className="w-4 h-4 text-[#DC2626]" />
                 )}
-                {detailRecord.teacher_remarks && (
-                  <p>
-                    <strong>Teacher Remarks:</strong> {detailRecord.teacher_remarks}
-                  </p>
-                )}
+                <span>
+                  {detailRecord.manzil_listened ? t('common.yes') : t('common.no')} •{' '}
+                  <span className="font-mono">
+                    {detailRecord.manzil_listened ? detailRecord.manzil_lines ?? 0 : 0}{' '}
+                    {t('performance.lines_unit')}
+                  </span>
+                </span>
               </div>
-            )}
+            </div>
 
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="secondary" onClick={() => setDetailRecord(null)}>

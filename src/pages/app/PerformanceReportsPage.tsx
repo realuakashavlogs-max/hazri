@@ -2,14 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  AlertTriangle,
-  Award,
   BookOpen,
   CheckCircle2,
   Download,
+  Layers,
   Printer,
-  TrendingDown,
-  TrendingUp,
+  RotateCcw,
   XCircle,
 } from 'lucide-react';
 import { useClasses } from '../../hooks/useClasses';
@@ -17,7 +15,7 @@ import { useStudents } from '../../hooks/useStudents';
 import { usePerformanceRange } from '../../hooks/usePerformance';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
-import { DAILY_RESULT_MAP, computePerformanceSummary } from '../../lib/performanceStats';
+import { computePerformanceSummary } from '../../lib/performanceStats';
 import { FIXED_STATUS_MAP } from '../../lib/statuses';
 import { exportPerformancePdf } from '../../lib/exporters';
 import { Button } from '../../components/ui/Button';
@@ -99,15 +97,19 @@ export const PerformanceReportsPage: React.FC = () => {
   const selectedClass = classes.find((c) => c.id === selectedClassId);
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
 
-  // Chronological trend points (up to last 14 entries for clean SVG chart)
   const trendPoints = useMemo(() => {
     const sorted = [...records].sort((a, b) => a.record_date.localeCompare(b.record_date));
     return sorted.slice(-14);
   }, [records]);
 
-  const maxMistakes = Math.max(
+  const maxLines = Math.max(
     1,
-    ...trendPoints.map((r) => Math.max(r.total_mistakes, r.atak_count))
+    ...trendPoints.map((r) => {
+      const sabaq = r.sabaq_listened ? r.sabaq_lines ?? 0 : 0;
+      const sabqi = r.sabqi_listened ? r.sabqi_lines ?? 0 : 0;
+      const manzil = r.manzil_listened ? r.manzil_lines ?? 0 : 0;
+      return Math.max(sabaq, sabqi, manzil);
+    })
   );
 
   const handleDownloadPdf = () => {
@@ -119,7 +121,7 @@ export const PerformanceReportsPage: React.FC = () => {
       records,
       appName: effectiveAppName,
     });
-    showToast('Performance PDF downloaded!', 'success');
+    showToast('Sabaq report PDF downloaded!', 'success');
   };
 
   return (
@@ -278,7 +280,7 @@ export const PerformanceReportsPage: React.FC = () => {
 
       {/* Print Header */}
       <div className="hidden print:block mb-4">
-        <h1 className="text-xl font-bold">{effectiveAppName} — Performance Report</h1>
+        <h1 className="text-xl font-bold">{effectiveAppName} — Sabaq & Attendance Report</h1>
         <p className="text-sm">
           {selectedClass ? selectedClass.name : 'All Classes'} |{' '}
           {selectedStudent ? selectedStudent.name : 'All Students'} | {startDate} to{' '}
@@ -287,7 +289,7 @@ export const PerformanceReportsPage: React.FC = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <StatCard
           title={t('performance.days_present')}
           value={summary.daysPresent}
@@ -301,66 +303,58 @@ export const PerformanceReportsPage: React.FC = () => {
           icon={<XCircle className="w-4 h-4" />}
         />
         <StatCard
-          title={t('performance.sabaq_done')}
-          value={summary.sabaqCompletedCount}
+          title={t('performance.sabaq_lines_total')}
+          value={summary.totalSabaqLines}
           colorHex="#2563EB"
           icon={<BookOpen className="w-4 h-4" />}
         />
         <StatCard
-          title={t('performance.sabqi_manzil_done')}
-          value={`${summary.sabqiCompletedCount} / ${summary.manzilCompletedCount}`}
+          title={t('performance.sabqi_lines_total')}
+          value={summary.totalSabqiLines}
           colorHex="#0D9488"
-          icon={<CheckCircle2 className="w-4 h-4" />}
+          icon={<RotateCcw className="w-4 h-4" />}
         />
         <StatCard
-          title={t('performance.mistakes_atak')}
-          value={`${summary.totalMistakes} / ${summary.totalAtak}`}
-          colorHex="#F59E0B"
-          icon={<AlertTriangle className="w-4 h-4" />}
-        />
-        <StatCard
-          title={t('performance.avg_daily')}
-          value={
-            summary.totalDays > 0
-              ? `${summary.averageScore}/5`
-              : '-'
-          }
+          title={t('performance.manzil_lines_total')}
+          value={summary.totalManzilLines}
           colorHex="#7C3AED"
-          icon={<Award className="w-4 h-4" />}
+          icon={<Layers className="w-4 h-4" />}
         />
       </div>
 
-      {/* Visual Charts & Improvement Over Time */}
+      {/* Visual Breakdown & Lines Chart */}
       {records.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Completion & Improvement Card */}
           <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] p-4 space-y-4 shadow-sm">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm sm:text-base font-extrabold text-[var(--color-text)]">
                 {t('performance.completion_breakdown')}
               </h2>
-              <span className="text-xs font-bold text-primary">
-                {summary.averageResultLabel}
+              <span className="text-xs font-bold font-mono text-primary">
+                {summary.totalLines} {t('performance.lines_unit')}
               </span>
             </div>
 
             <div className="space-y-3">
               {[
                 {
-                  label: 'Sabaq Completed',
-                  done: summary.sabaqCompletedCount,
+                  label: t('performance.section_sabaq'),
+                  done: summary.sabaqListenedCount,
+                  lines: summary.totalSabaqLines,
                   total: summary.totalDays,
                   color: '#2563EB',
                 },
                 {
-                  label: 'Sabqi Completed',
-                  done: summary.sabqiCompletedCount,
+                  label: t('performance.section_sabqi'),
+                  done: summary.sabqiListenedCount,
+                  lines: summary.totalSabqiLines,
                   total: summary.totalDays,
                   color: '#0D9488',
                 },
                 {
-                  label: 'Manzil Completed',
-                  done: summary.manzilCompletedCount,
+                  label: t('performance.section_manzil'),
+                  done: summary.manzilListenedCount,
+                  lines: summary.totalManzilLines,
                   total: summary.totalDays,
                   color: '#7C3AED',
                 },
@@ -371,8 +365,9 @@ export const PerformanceReportsPage: React.FC = () => {
                   <div key={bar.label} className="space-y-1">
                     <div className="flex items-center justify-between text-xs font-bold">
                       <span>{bar.label}</span>
-                      <span>
-                        {bar.done}/{bar.total} ({pct}%)
+                      <span className="font-mono">
+                        {bar.done}/{bar.total} ({pct}%) • {bar.lines}{' '}
+                        {t('performance.lines_unit')}
                       </span>
                     </div>
                     <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
@@ -385,101 +380,72 @@ export const PerformanceReportsPage: React.FC = () => {
                 );
               })}
             </div>
-
-            {/* Improvement over time indicator */}
-            <div className="pt-3 border-t border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-2 font-bold">
-                {summary.improvementDelta !== null && summary.improvementDelta >= 0 ? (
-                  <TrendingUp className="w-4 h-4 text-[#16A34A]" />
-                ) : (
-                  <TrendingDown className="w-4 h-4 text-[#DC2626]" />
-                )}
-                <span>{t('performance.improvement_over_time')}:</span>
-              </div>
-              {summary.improvementDelta === null ? (
-                <span className="text-[var(--color-muted)]">
-                  Need at least 2 records to measure trend
-                </span>
-              ) : (
-                <div className="flex items-center gap-3 font-mono font-bold">
-                  <span
-                    className={
-                      summary.improvementDelta >= 0
-                        ? 'text-[#16A34A]'
-                        : 'text-[#DC2626]'
-                    }
-                  >
-                    Score {summary.improvementDelta >= 0 ? '+' : ''}
-                    {summary.improvementDelta}
-                  </span>
-                  {summary.improvementMistakesDelta !== null && (
-                    <span
-                      className={
-                        summary.improvementMistakesDelta <= 0
-                          ? 'text-[#16A34A]'
-                          : 'text-[#F59E0B]'
-                      }
-                    >
-                      Mistakes {summary.improvementMistakesDelta > 0 ? '+' : ''}
-                      {summary.improvementMistakesDelta}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
 
-          {/* Trend Bar Chart (SVG) */}
+          {/* Trend Bar Chart (SVG) for Recited Lines */}
           <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] p-4 space-y-3 shadow-sm">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <h2 className="text-sm sm:text-base font-extrabold text-[var(--color-text)]">
                 {t('performance.trend_chart_title')}
               </h2>
               <div className="flex items-center gap-3 text-[11px] font-bold">
-                <span className="inline-flex items-center gap-1 text-[#16A34A]">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-[#16A34A]" /> Score (1-5)
+                <span className="inline-flex items-center gap-1 text-[#2563EB]">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[#2563EB]" /> Sabaq
                 </span>
-                <span className="inline-flex items-center gap-1 text-[#DC2626]">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-[#DC2626]" /> Mistakes
+                <span className="inline-flex items-center gap-1 text-[#0D9488]">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[#0D9488]" /> Sabqi
+                </span>
+                <span className="inline-flex items-center gap-1 text-[#7C3AED]">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[#7C3AED]" /> Manzil
                 </span>
               </div>
             </div>
 
             <div className="w-full overflow-x-auto">
               <svg
-                viewBox={`0 0 ${Math.max(280, trendPoints.length * 42)} 140`}
+                viewBox={`0 0 ${Math.max(280, trendPoints.length * 44)} 140`}
                 className="w-full h-36"
                 role="img"
-                aria-label="Daily score and mistakes chart"
+                aria-label="Daily Sabaq, Sabqi, and Manzil lines chart"
               >
                 {trendPoints.map((pt, idx) => {
-                  const x = idx * 42 + 10;
-                  const score = DAILY_RESULT_MAP[pt.daily_result]?.score ?? 3;
-                  const scoreHeight = Math.max(8, (score / 5) * 95);
-                  const mistakeHeight = Math.max(
-                    pt.total_mistakes > 0 ? 6 : 2,
-                    (pt.total_mistakes / maxMistakes) * 95
-                  );
+                  const x = idx * 44 + 8;
+                  const sabaqLines = pt.sabaq_listened ? pt.sabaq_lines ?? 0 : 0;
+                  const sabqiLines = pt.sabqi_listened ? pt.sabqi_lines ?? 0 : 0;
+                  const manzilLines = pt.manzil_listened ? pt.manzil_lines ?? 0 : 0;
+
+                  const hSabaq = Math.max(sabaqLines > 0 ? 6 : 2, (sabaqLines / maxLines) * 95);
+                  const hSabqi = Math.max(sabqiLines > 0 ? 6 : 2, (sabqiLines / maxLines) * 95);
+                  const hManzil = Math.max(manzilLines > 0 ? 6 : 2, (manzilLines / maxLines) * 95);
+
                   return (
                     <g key={pt.id}>
                       <rect
                         x={x}
-                        y={110 - scoreHeight}
-                        width={12}
-                        height={scoreHeight}
-                        rx={3}
-                        fill="#16A34A"
+                        y={110 - hSabaq}
+                        width={9}
+                        height={hSabaq}
+                        rx={2}
+                        fill="#2563EB"
                       />
                       <rect
-                        x={x + 14}
-                        y={110 - mistakeHeight}
-                        width={12}
-                        height={mistakeHeight}
-                        rx={3}
-                        fill="#DC2626"
+                        x={x + 11}
+                        y={110 - hSabqi}
+                        width={9}
+                        height={hSabqi}
+                        rx={2}
+                        fill="#0D9488"
+                      />
+                      <rect
+                        x={x + 22}
+                        y={110 - hManzil}
+                        width={9}
+                        height={hManzil}
+                        rx={2}
+                        fill="#7C3AED"
                       />
                       <text
-                        x={x + 13}
+                        x={x + 15}
                         y={128}
                         textAnchor="middle"
                         fontSize="8"
@@ -512,7 +478,7 @@ export const PerformanceReportsPage: React.FC = () => {
             <EmptyState
               variant="attendance"
               title="No Performance Records"
-              description="Record daily Sabaq, Sabqi, Manzil, and mistakes from Daily Performance or Student Profile."
+              description="Record daily Attendance, Sabaq, Sabqi, and Manzil from Daily Sabaq or Student Profile."
             />
           </div>
         ) : (
@@ -524,17 +490,20 @@ export const PerformanceReportsPage: React.FC = () => {
                     <th className="py-3 px-4 text-start">Date</th>
                     <th className="py-3 px-4 text-start">Student</th>
                     <th className="py-3 px-4 text-center">Attend</th>
-                    <th className="py-3 px-4 text-start">Sabaq</th>
-                    <th className="py-3 px-4 text-center">Sabqi / Manzil</th>
-                    <th className="py-3 px-4 text-center">Mistakes / Atak</th>
-                    <th className="py-3 px-4 text-end">Result</th>
+                    <th className="py-3 px-4 text-center">Sabaq</th>
+                    <th className="py-3 px-4 text-center">Sabqi</th>
+                    <th className="py-3 px-4 text-center">Manzil</th>
+                    <th className="py-3 px-4 text-end">Total Lines</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)] text-sm">
                   {records.map((r) => {
                     const st = studentMap.get(r.student_id);
                     const attMeta = FIXED_STATUS_MAP[r.attendance_status];
-                    const resMeta = DAILY_RESULT_MAP[r.daily_result];
+                    const sabaqLines = r.sabaq_listened ? r.sabaq_lines ?? 0 : 0;
+                    const sabqiLines = r.sabqi_listened ? r.sabqi_lines ?? 0 : 0;
+                    const manzilLines = r.manzil_listened ? r.manzil_lines ?? 0 : 0;
+
                     return (
                       <tr
                         key={r.id}
@@ -559,31 +528,32 @@ export const PerformanceReportsPage: React.FC = () => {
                             {attMeta.label_en}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-xs">
-                          <div className="font-semibold">
-                            {r.sabaq_surah || (r.sabaq_listened ? 'Listened' : 'Not listened')}
-                            {r.sabaq_para ? ` (Juz ${r.sabaq_para})` : ''}
-                          </div>
-                          <div className="text-[var(--color-muted)]">
-                            {r.sabaq_completed ? 'Completed' : 'Incomplete'}
-                            {r.sabaq_grade ? ` • Grade ${r.sabaq_grade}` : ''}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-center text-xs">
-                          Sabqi: {r.sabqi_completed ? '✓' : '✗'} | Manzil:{' '}
-                          {r.manzil_completed ? '✓' : '✗'}
-                        </td>
-                        <td className="py-3 px-4 text-center text-xs font-mono font-bold">
-                          <span className="text-[#DC2626]">{r.total_mistakes}</span> /{' '}
-                          <span className="text-[#7C3AED]">{r.atak_count}</span>
-                        </td>
-                        <td className="py-3 px-4 text-end">
-                          <span
-                            className="px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white"
-                            style={{ backgroundColor: resMeta.color }}
-                          >
-                            {resMeta.label_en}
+                        <td className="py-3 px-4 text-center text-xs font-bold">
+                          <span className={r.sabaq_listened ? 'text-[#16A34A]' : 'text-[#DC2626]'}>
+                            {r.sabaq_listened ? t('common.yes') : t('common.no')}
+                          </span>{' '}
+                          <span className="font-mono text-[var(--color-muted)]">
+                            ({sabaqLines})
                           </span>
+                        </td>
+                        <td className="py-3 px-4 text-center text-xs font-bold">
+                          <span className={r.sabqi_listened ? 'text-[#16A34A]' : 'text-[#DC2626]'}>
+                            {r.sabqi_listened ? t('common.yes') : t('common.no')}
+                          </span>{' '}
+                          <span className="font-mono text-[var(--color-muted)]">
+                            ({sabqiLines})
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center text-xs font-bold">
+                          <span className={r.manzil_listened ? 'text-[#16A34A]' : 'text-[#DC2626]'}>
+                            {r.manzil_listened ? t('common.yes') : t('common.no')}
+                          </span>{' '}
+                          <span className="font-mono text-[var(--color-muted)]">
+                            ({manzilLines})
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-end font-mono font-extrabold text-primary">
+                          {sabaqLines + sabqiLines + manzilLines}
                         </td>
                       </tr>
                     );
@@ -595,7 +565,10 @@ export const PerformanceReportsPage: React.FC = () => {
             <div className="md:hidden divide-y divide-[var(--color-border)]">
               {records.map((r) => {
                 const st = studentMap.get(r.student_id);
-                const resMeta = DAILY_RESULT_MAP[r.daily_result];
+                const attMeta = FIXED_STATUS_MAP[r.attendance_status];
+                const sabaqLines = r.sabaq_listened ? r.sabaq_lines ?? 0 : 0;
+                const sabqiLines = r.sabqi_listened ? r.sabqi_lines ?? 0 : 0;
+                const manzilLines = r.manzil_listened ? r.manzil_lines ?? 0 : 0;
                 return (
                   <Link
                     key={r.id}
@@ -608,14 +581,15 @@ export const PerformanceReportsPage: React.FC = () => {
                       </span>
                       <span
                         className="px-2 py-0.5 rounded-full text-[11px] font-bold text-white"
-                        style={{ backgroundColor: resMeta.color }}
+                        style={{ backgroundColor: attMeta.color }}
                       >
-                        {resMeta.label_en}
+                        {attMeta.label_en}
                       </span>
                     </div>
                     <div className="text-xs text-[var(--color-muted)] font-mono">
-                      {r.record_date} • {r.attendance_status.toUpperCase()} • Mistakes:{' '}
-                      {r.total_mistakes} • Atak: {r.atak_count}
+                      {r.record_date} • Sabaq: {r.sabaq_listened ? sabaqLines : 0} • Sabqi:{' '}
+                      {r.sabqi_listened ? sabqiLines : 0} • Manzil:{' '}
+                      {r.manzil_listened ? manzilLines : 0}
                     </div>
                   </Link>
                 );

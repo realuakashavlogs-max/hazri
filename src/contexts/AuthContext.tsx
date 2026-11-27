@@ -3,18 +3,30 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { AuthUser } from '../types/database';
 import { authService, mapSupabaseUser } from '../services/authService';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { clearOfflineDataForUser } from '../lib/offlineQueue';
 
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  signIn: (email: string, pass: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  updatePassword: (newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+async function clearRuntimeDataCaches(): Promise<void> {
+  if (typeof window === 'undefined' || !('caches' in window)) return;
+  try {
+    const keys = await window.caches.keys();
+    await Promise.all(
+      keys
+        .filter((k) => !k.startsWith('workbox-precache') && !k.startsWith('google-fonts'))
+        .map((k) => window.caches.delete(k))
+    );
+  } catch {
+    // Ignore cache API errors
+  }
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const queryClient = useQueryClient();
@@ -62,7 +74,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const nextUser = session?.user ? mapSupabaseUser(session.user) : null;
       const nextId = nextUser?.id ?? null;
       if (prevUserIdRef.current && prevUserIdRef.current !== nextId) {
+        const oldUserId = prevUserIdRef.current;
         queryClient.clear();
+        void clearOfflineDataForUser(oldUserId);
+        void clearRuntimeDataCaches();
       }
       prevUserIdRef.current = nextId;
       setUser(nextUser);
@@ -75,28 +90,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [queryClient]);
 
-  const signIn = async (email: string, pass: string) => {
-    const authUser = await authService.signIn(email, pass);
-    setUser(authUser);
-  };
-
   const signInWithGoogle = async () => {
     await authService.signInWithGoogle();
   };
 
   const signOut = async () => {
-    await authService.signOut();
-    queryClient.clear();
-    prevUserIdRef.current = null;
-    setUser(null);
-  };
-
-  const resetPassword = async (email: string) => {
-    await authService.resetPassword(email);
-  };
-
-  const updatePassword = async (newPassword: string) => {
-    await authService.updatePassword(newPassword);
+    const currentUserId = user?.id || prevUserIdRef.current || undefined;
+    try {
+      await authService.signOut();
+    } finally {
+      queryClient.clear();
+      await clearOfflineDataForUser(currentUserId);
+      await clearRuntimeDataCaches();
+      prevUserIdRef.current = null;
+      setUser(null);
+    }
   };
 
   return (
@@ -104,11 +112,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         loading,
-        signIn,
         signInWithGoogle,
         signOut,
-        resetPassword,
-        updatePassword,
       }}
     >
       {children}
