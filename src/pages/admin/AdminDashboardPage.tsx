@@ -155,6 +155,34 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
       </section>
 
+      {globalCategory && (
+        <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-extrabold text-lg text-[var(--color-text)]">{({ classes: 'All Classes', students: 'All Students', attendance: 'All Attendance Records', performance: 'All Daily Performance Records' })[globalCategory]}</h2>
+              <p className="text-xs text-[var(--color-muted)]">Showing records across all registered accounts</p>
+            </div>
+            <button type="button" onClick={() => setGlobalCategory(null)} className="rounded-lg px-3 py-2 text-xs font-bold bg-[var(--color-bg)]">Close</button>
+          </div>
+          {globalLoading ? <div className="p-5 text-sm text-[var(--color-muted)]">Loading records…</div> : globalError ? <div role="alert" className="p-4 text-sm text-red-600">{globalError}</div> : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[620px] text-sm">
+                <thead className="bg-[var(--color-bg)]"><tr className="text-left text-[var(--color-muted)]">
+                  <th className="p-3">Account</th>
+                  {(globalRows[0] ? Object.keys(globalRows[0]).filter((key) => key !== 'user_id') : []).map((key) => <th key={key} className="p-3 capitalize">{key.replace(/_/g, ' ')}</th>)}
+                </tr></thead>
+                <tbody>{globalRows.map((row, index) => (
+                  <tr key={row.id || `${row.student_id}-${index}`} className="border-t border-[var(--color-border)]">
+                    <td className="p-3 text-xs font-semibold">{accounts.find((account) => account.id === row.user_id)?.email || 'Account'}</td>
+                    {Object.entries(row).filter(([key]) => key !== 'user_id').map(([key, value]) => <td key={key} className="p-3 text-xs">{typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value == null ? '—' : String(value)}</td>)}
+                  </tr>
+                ))}</tbody>
+              </table>
+              {globalRows.length === 0 && <p className="p-5 text-sm text-[var(--color-muted)]">No records found.</p>}
+            </div>
+          )}
+        </section>
+      )}
       <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm overflow-hidden">
         <div className="p-4 border-b border-[var(--color-border)]">
           <h2 className="font-extrabold text-lg text-[var(--color-text)]">All Registered Accounts</h2>
