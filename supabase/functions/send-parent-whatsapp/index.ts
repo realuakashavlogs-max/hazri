@@ -32,21 +32,9 @@ Deno.serve(async (req: Request) => {
   const authorization = req.headers.get("Authorization");
   if (!authorization) return json({ error: "Authentication required" }, 401);
 
-  const accessToken = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
-  const phoneNumberId = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
-  const graphVersion = Deno.env.get("WHATSAPP_GRAPH_API_VERSION");
+  const graphVersion = Deno.env.get("META_GRAPH_API_VERSION") || "v27.0";
   const absentTemplate = Deno.env.get("WHATSAPP_TEMPLATE_ABSENT");
   const leaveTemplate = Deno.env.get("WHATSAPP_TEMPLATE_LEAVE");
-  if (!accessToken || !phoneNumberId || !graphVersion || !absentTemplate || !leaveTemplate) {
-    return json({
-      configured: false,
-      sent: 0,
-      failed: 0,
-      error: "WhatsApp Cloud API is not configured. Add the five WhatsApp secrets in Supabase Edge Function secrets.",
-      code: "WHATSAPP_NOT_CONFIGURED",
-    });
-  }
-
   const url = Deno.env.get("SUPABASE_URL");
   const keys = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
@@ -61,6 +49,23 @@ Deno.serve(async (req: Request) => {
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError || !authData.user) return json({ error: "Invalid session" }, 401);
   const userId = authData.user.id;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceRoleKey) return json({ error: "Server-side service role is not configured." }, 500);
+  const serviceClient = createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: waConnection, error: waConnectionError } = await serviceClient.schema("private")
+    .from("whatsapp_business_connections")
+    .select("access_token,phone_number_id,display_phone_number,token_expires_at")
+    .eq("user_id", userId).maybeSingle();
+  if (waConnectionError) return json({ error: waConnectionError.message }, 500);
+  if (!waConnection) return json({ configured: false, sent: 0, failed: 0, error: "Connect your WhatsApp Business account in Settings first.", code: "WHATSAPP_NOT_CONNECTED" });
+  const accessToken = waConnection.access_token as string;
+  const phoneNumberId = waConnection.phone_number_id as string;
+  if (waConnection.token_expires_at && new Date(waConnection.token_expires_at).getTime() <= Date.now()) {
+    return json({ configured: false, sent: 0, failed: 0, error: "Your WhatsApp connection has expired. Please reconnect it in Settings.", code: "WHATSAPP_TOKEN_EXPIRED" });
+  }
+  if (!absentTemplate || !leaveTemplate) {
+    return json({ configured: false, sent: 0, failed: 0, error: "WhatsApp absence/leave template names are not configured on the server.", code: "WHATSAPP_TEMPLATE_NOT_CONFIGURED" });
+  }
 
   let body: { classId?: string; attendanceDate?: string; language?: 'en' | 'ur'; appName?: string };
   try {
