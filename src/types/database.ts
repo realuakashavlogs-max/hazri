@@ -478,7 +478,21 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      admin_dashboard_overview: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          id: string;
+          email: string;
+          full_name: string | null;
+          role: string;
+          is_blocked: boolean;
+          created_at: string;
+          classes_count: number;
+          students_count: number;
+          attendance_count: number;
+          performance_count: number;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;
