@@ -56,7 +56,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           )}
         </aside>
 
-        <main className="flex-1 min-w-0 px-3 sm:px-6 lg:px-8 py-4 sm:py-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:pb-8">
+        <main className="flex-1 min-w-0 px-3 sm:px-6 lg:px-8 py-4 sm:py-5 pb-[calc(8.5rem+env(safe-area-inset-bottom))] sm:pb-8">
           <div className="w-full max-w-[1100px] mx-auto min-w-0">{children}</div>
         </main>
       </div>
