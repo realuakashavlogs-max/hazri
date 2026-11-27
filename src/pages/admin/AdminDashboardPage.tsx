@@ -31,6 +31,11 @@ export const AdminDashboardPage: React.FC = () => {
   const [accounts, setAccounts] = useState<AdminAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<AdminAccount | null>(null);
+  const [detailTab, setDetailTab] = useState<'classes' | 'students' | 'attendance' | 'performance'>('classes');
+  const [detailRows, setDetailRows] = useState<{ classes: any[]; students: any[]; attendance: any[]; performance: any[] } | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   const loadOverview = async () => {
     if (!supabase) return;
@@ -47,6 +52,40 @@ export const AdminDashboardPage: React.FC = () => {
   };
 
   useEffect(() => { void loadOverview(); }, []);
+
+  const loadAccountDetails = async (account: AdminAccount) => {
+    if (!supabase) return;
+    setSelectedAccount(account);
+    setDetailTab('classes');
+    setDetailRows(null);
+    setDetailError(null);
+    setDetailLoading(true);
+    const [classesResult, studentsResult, attendanceResult, performanceResult] = await Promise.all([
+      supabase.from('classes').select('id,name').eq('user_id', account.id).order('created_at', { ascending: false }),
+      supabase.from('students').select('id,name,roll_no,class_id').eq('user_id', account.id).order('name'),
+      supabase.from('attendance_records').select('student_id,attendance_date,status').eq('user_id', account.id).order('attendance_date', { ascending: false }).limit(100),
+      supabase.from('student_daily_performance').select('student_id,record_date,attendance_status,sabaq_listened,sabaq_lines,sabqi_listened,sabqi_lines,manzil_listened,manzil_lines').eq('user_id', account.id).order('record_date', { ascending: false }).limit(100),
+    ]);
+    const firstError = classesResult.error || studentsResult.error || attendanceResult.error || performanceResult.error;
+    if (firstError) {
+      setDetailError(firstError.message);
+    } else {
+      setDetailRows({
+        classes: classesResult.data || [],
+        students: studentsResult.data || [],
+        attendance: attendanceResult.data || [],
+        performance: performanceResult.data || [],
+      });
+    }
+    setDetailLoading(false);
+  };
+
+  const detailTabs = [
+    { key: 'classes', label: 'Classes' },
+    { key: 'students', label: 'Students' },
+    { key: 'attendance', label: 'Attendance (latest 100)' },
+    { key: 'performance', label: 'Performance (latest 100)' },
+  ] as const;
 
   const totals = useMemo(() => accounts.reduce((sum, account) => ({
     accounts: sum.accounts + 1,
@@ -96,7 +135,7 @@ export const AdminDashboardPage: React.FC = () => {
             <table className="w-full min-w-[760px] text-sm">
               <thead className="bg-[var(--color-bg)] text-[var(--color-muted)]">
                 <tr className="text-left">
-                  <th className="p-3 font-bold">Account</th><th className="p-3 font-bold">Role</th><th className="p-3 font-bold">Classes</th><th className="p-3 font-bold">Students</th><th className="p-3 font-bold">Attendance</th><th className="p-3 font-bold">Performance</th><th className="p-3 font-bold">Status</th>
+                  <th className="p-3 font-bold">Account</th><th className="p-3 font-bold">Role</th><th className="p-3 font-bold">Classes</th><th className="p-3 font-bold">Students</th><th className="p-3 font-bold">Attendance</th><th className="p-3 font-bold">Performance</th><th className="p-3 font-bold">Status</th><th className="p-3 font-bold">Details</th>
                 </tr>
               </thead>
               <tbody>
@@ -108,7 +147,7 @@ export const AdminDashboardPage: React.FC = () => {
                     <td className="p-3 tabular-nums">{Number(account.students_count || 0)}</td>
                     <td className="p-3 tabular-nums">{Number(account.attendance_count || 0)}</td>
                     <td className="p-3 tabular-nums">{Number(account.performance_count || 0)}</td>
-                    <td className="p-3"><span className={account.is_blocked ? 'text-red-600 font-bold' : 'text-emerald-600 font-bold'}>{account.is_blocked ? 'Blocked' : 'Active'}</span></td>
+                    <td className="p-3"><span className={account.is_blocked ? 'text-red-600 font-bold' : 'text-emerald-600 font-bold'}>{account.is_blocked ? 'Blocked' : 'Active'}</span></td><td className="p-3"><button type="button" onClick={() => void loadAccountDetails(account)} className="rounded-lg bg-primary/10 text-primary px-3 py-2 text-xs font-bold hover:bg-primary/15">View records</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -116,6 +155,32 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
         )}
       </section>
+      {selectedAccount && (
+        <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="font-extrabold text-lg text-[var(--color-text)]">Account Records</h2>
+              <p className="text-xs text-[var(--color-muted)] break-all">{selectedAccount.full_name || 'Unnamed account'} · {selectedAccount.email}</p>
+            </div>
+            <button type="button" onClick={() => { setSelectedAccount(null); setDetailRows(null); }} className="text-xs font-semibold text-[var(--color-muted)] hover:text-[var(--color-text)] self-start sm:self-auto">Close details</button>
+          </div>
+          <div className="flex flex-wrap gap-2 p-3 border-b border-[var(--color-border)]">
+            {detailTabs.map((tab) => (
+              <button key={tab.key} type="button" onClick={() => setDetailTab(tab.key)} className={`rounded-xl px-3 py-2 text-xs font-bold ${detailTab === tab.key ? 'bg-primary text-white' : 'bg-[var(--color-bg)] text-[var(--color-muted)]'}`}>{tab.label}</button>
+            ))}
+          </div>
+          {detailLoading ? <div className="p-5 text-sm text-[var(--color-muted)]">Loading account records…</div> :
+            detailError ? <div role="alert" className="p-4 text-sm text-red-600">{detailError}</div> :
+            !detailRows ? <div className="p-4 text-sm text-[var(--color-muted)]">Select a record category.</div> :
+            <div className="overflow-x-auto">
+              {detailTab === 'classes' && <table className="w-full text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Class</th><th className="p-3">ID</th></tr></thead><tbody>{detailRows.classes.map((row) => <tr key={row.id} className="border-t border-[var(--color-border)]"><td className="p-3 font-semibold">{row.name}</td><td className="p-3 font-mono text-xs">{row.id}</td></tr>)}</tbody></table>}
+              {detailTab === 'students' && <table className="w-full min-w-[520px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Student</th><th className="p-3">Roll No.</th><th className="p-3">Class ID</th></tr></thead><tbody>{detailRows.students.map((row) => <tr key={row.id} className="border-t border-[var(--color-border)]"><td className="p-3 font-semibold">{row.name}</td><td className="p-3">{row.roll_no || '—'}</td><td className="p-3 font-mono text-xs">{row.class_id}</td></tr>)}</tbody></table>}
+              {detailTab === 'attendance' && <table className="w-full min-w-[520px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Date</th><th className="p-3">Student ID</th><th className="p-3">Status</th></tr></thead><tbody>{detailRows.attendance.map((row, i) => <tr key={`${row.student_id}-${row.attendance_date}-${i}`} className="border-t border-[var(--color-border)]"><td className="p-3">{row.attendance_date}</td><td className="p-3 font-mono text-xs">{row.student_id}</td><td className="p-3 capitalize font-semibold">{row.status}</td></tr>)}</tbody></table>}
+              {detailTab === 'performance' && <table className="w-full min-w-[760px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Date</th><th className="p-3">Student ID</th><th className="p-3">Attendance</th><th className="p-3">Sabaq</th><th className="p-3">Sabqi</th><th className="p-3">Manzil</th></tr></thead><tbody>{detailRows.performance.map((row, i) => <tr key={`${row.student_id}-${row.record_date}-${i}`} className="border-t border-[var(--color-border)]"><td className="p-3">{row.record_date}</td><td className="p-3 font-mono text-xs">{row.student_id}</td><td className="p-3 capitalize">{row.attendance_status}</td><td className="p-3">{row.sabaq_listened ? `Yes · ${row.sabaq_lines} lines` : 'No'}</td><td className="p-3">{row.sabqi_listened ? `Yes · ${row.sabqi_lines} lines` : 'No'}</td><td className="p-3">{row.manzil_listened ? `Yes · ${row.manzil_lines} lines` : 'No'}</td></tr>)}</tbody></table>}
+            </div>
+          }
+        </section>
+      )}
     </div>
   );
 };
