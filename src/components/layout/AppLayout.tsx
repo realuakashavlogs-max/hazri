@@ -21,7 +21,6 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     { to: '/messages', label: t('nav.messages'), icon: MessageCircle },
     { to: '/reports', label: t('nav.reports'), icon: BarChart3 },
     { to: '/settings', label: t('nav.settings'), icon: Settings },
-    ...(isAdmin ? [{ to: '/admin', label: 'Admin Panel', icon: ShieldCheck }] : []),
   ];
 
   return (
@@ -60,6 +59,12 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           <div className="w-full max-w-[1100px] mx-auto min-w-0">{children}</div>
         </main>
       </div>
+
+      {isAdmin && (
+        <NavLink to="/admin" aria-label="Admin Panel" title="Admin Panel" className="fixed right-3 top-20 z-50 inline-flex items-center justify-center w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted)] shadow-md hover:text-primary hover:border-primary/40 print:hidden">
+          <ShieldCheck className="w-5 h-5" />
+        </NavLink>
+      )}
 
       <nav aria-label="Mobile bottom navigation"
         className={`sm:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--color-surface)]/95 backdrop-blur-md border-t border-[var(--color-border)] px-1 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))] grid gap-0.5 print:hidden ${isAdmin ? 'grid-cols-5' : 'grid-cols-4'}`}
