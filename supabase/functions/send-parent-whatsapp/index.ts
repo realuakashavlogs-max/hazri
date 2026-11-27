@@ -9,7 +9,7 @@ const corsHeaders = {
 
 type StatusRow = { id: string; key: string };
 type AttendanceRow = { student_id: string; status_id: string };
-type StudentRow = { id: string; name: string; parent_name: string | null; parent_phone: string | null; class_id: string };
+type StudentRow = { id: string; name: string; parent_name: string | null; parent_phone: string | null; class_id: string; messaging_consent: boolean };
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
     supabase.from("attendance_records").select("student_id,status_id")
       .eq("user_id", userId).eq("class_id", body.classId).eq("attendance_date", body.attendanceDate),
     supabase.from("attendance_statuses").select("id,key").eq("user_id", userId),
-    supabase.from("students").select("id,name,parent_name,parent_phone,class_id")
+    supabase.from("students").select("id,name,parent_name,parent_phone,class_id,messaging_consent")
       .eq("user_id", userId).eq("class_id", body.classId).eq("is_archived", false),
     supabase.from("user_settings").select("language,app_display_name,message_template")
       .eq("user_id", userId).maybeSingle(),
@@ -101,7 +101,7 @@ Deno.serve(async (req: Request) => {
     if (status !== "absent" && status !== "leave") return [];
     const student = studentById.get(record.student_id);
     const phone = normalizePakistanPhone(student?.parent_phone || null);
-    if (!student || !phone) return [];
+    if (!student || !phone || student.messaging_consent !== true) return [];
     return [{
       user_id: userId, student_id: student.id, class_id: body.classId!,
       attendance_date: date, status_key: status, phone_number: phone, language,
@@ -113,7 +113,7 @@ Deno.serve(async (req: Request) => {
     const missingPhoneCount = (records || []).filter((r: AttendanceRow) => {
       const key = statusById.get(r.status_id);
       const student = studentById.get(r.student_id);
-      return (key === "absent" || key === "leave") && !normalizePakistanPhone(student?.parent_phone || null);
+      return (key === "absent" || key === "leave") && (!normalizePakistanPhone(student?.parent_phone || null) || student?.messaging_consent !== true);
     }).length;
     return json({ sent: 0, skipped: missingPhoneCount, message: "No eligible parent numbers for absent/leave attendance." });
   }
