@@ -92,11 +92,7 @@ export const SettingsPage: React.FC = () => {
         w.FB.init({ appId: whatsappConfig.appId, cookie: true, xfbml: false, version: 'v27.0' });
       }
 
-      let finishSignup: ((value: any) => void) | null = null;
-      let failSignup: ((reason: Error) => void) | null = null;
       const signupInfoPromise = new Promise<any>((resolve, reject) => {
-        finishSignup = resolve;
-        failSignup = reject;
         const listener = (event: MessageEvent) => {
           if (!event.origin.endsWith('facebook.com')) return;
           try {
@@ -123,7 +119,6 @@ export const SettingsPage: React.FC = () => {
       });
       const code = loginResponse?.authResponse?.code;
       if (!code) {
-        if (failSignup) failSignup(new Error('Meta login did not return an authorization code.'));
         throw new Error('Meta login was not completed.');
       }
       const signupInfo = await signupInfoPromise;
