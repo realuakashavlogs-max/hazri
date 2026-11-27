@@ -27,21 +27,16 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     { to: '/settings', label: t('nav.settings'), icon: Settings },
   ];
 
-  const mobileTabs = [
-    { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
-    { to: '/attendance', label: t('nav.attendance'), icon: CheckSquare },
-    { to: '/performance', label: t('nav.performance'), icon: BookOpenCheck },
-    { to: '/students', label: t('nav.students'), icon: Users },
-    { to: '/reports', label: t('nav.reports'), icon: BarChart3 },
-  ];
+  // Keep every main section directly reachable on small screens.
+  const mobileTabs = sidebarLinks;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-text)]">
+    <div className="min-h-screen min-h-[100dvh] flex flex-col bg-[var(--color-bg)] text-[var(--color-text)]">
       <Navbar />
 
-      <div className="flex-1 flex">
+      <div className="flex-1 flex min-w-0">
         {/* Tablet / Desktop Sidebar Navigation (>= 640px) */}
-        <aside className="hidden sm:flex sm:w-56 lg:w-64 shrink-0 flex-col border-e border-[var(--color-border)] bg-[var(--color-surface)] p-3 gap-1 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto print:hidden">
+        <aside className="hidden sm:flex sm:w-56 lg:w-64 shrink-0 flex-col border-e border-[var(--color-border)] bg-[var(--color-surface)] p-3 gap-1 sticky top-16 h-[calc(100vh-4rem)] h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain print:hidden">
           <nav className="flex-1 space-y-1" aria-label="Main navigation">
             {sidebarLinks.map((item) => {
               const Icon = item.icon;
@@ -88,16 +83,16 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           )}
         </aside>
 
-        {/* Main Content Area (~1100px max-width) */}
-        <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-5 pb-24 sm:pb-8">
-          <div className="max-w-[1100px] mx-auto">{children}</div>
+        {/* Content scrolls naturally and remains clear of the fixed mobile menu. */}
+        <main className="flex-1 min-w-0 px-3 sm:px-6 lg:px-8 py-4 sm:py-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:pb-8">
+          <div className="max-w-[1100px] mx-auto min-w-0">{children}</div>
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation (<640px) */}
+      {/* Two-row mobile navigation: all seven sections stay visible without horizontal clipping. */}
       <nav
         aria-label="Mobile bottom navigation"
-        className="sm:hidden fixed bottom-0 inset-x-0 z-30 bg-[var(--color-surface)]/95 backdrop-blur-md border-t border-[var(--color-border)] px-1 py-1 grid grid-cols-5 print:hidden"
+        className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--color-surface)]/95 backdrop-blur-md border-t border-[var(--color-border)] px-1 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))] grid grid-cols-4 gap-0.5 print:hidden"
       >
         {mobileTabs.map((item) => {
           const Icon = item.icon;
@@ -105,8 +100,9 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             <NavLink
               key={item.to}
               to={item.to}
+              aria-label={item.label}
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center min-h-[52px] rounded-xl text-[11px] font-semibold transition-colors duration-150 px-1 ${
+                `flex flex-col items-center justify-center min-h-[48px] rounded-lg text-[10px] leading-tight font-semibold transition-colors duration-150 px-0.5 py-1 min-w-0 ${
                   isActive
                     ? 'text-primary bg-primary/10'
                     : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
@@ -114,7 +110,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
               }
             >
               <Icon className="w-5 h-5 mb-0.5 shrink-0" />
-              <span className="truncate max-w-full">{item.label}</span>
+              <span className="truncate max-w-full text-center">{item.label}</span>
             </NavLink>
           );
         })}
