@@ -10,6 +10,8 @@ interface AuthContextType {
   isAdmin: boolean;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -105,6 +107,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await authService.signInWithGoogle();
   };
 
+  const resetPassword = async (email: string) => {
+    await authService.resetPassword(email);
+  };
+
+  const updatePassword = async (password: string) => {
+    await authService.updatePassword(password);
+  };
+
   const signInWithPassword = async (email: string, password: string) => {
     const adminUser = await authService.signInWithPassword(email, password);
     prevUserIdRef.current = adminUser.id;
@@ -131,6 +141,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAdmin: user?.role === 'admin',
         loading,
         signInWithGoogle,
+        resetPassword,
+        updatePassword,
         signInWithPassword,
         signOut,
       }}
