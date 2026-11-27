@@ -85,12 +85,13 @@ export const AdminDashboardPage: React.FC = () => {
         const statusRows = (statuses ?? []) as unknown as Array<{ id: string; label_en: string | null; label_ur: string | null }>;
         const statusLabels = new Map(statusRows.map((status) => [status.id, status.label_ur || status.label_en || status.id]));
         const attendanceRows = (attendanceResult.data ?? []) as unknown as Array<Record<string, any>>;
-        const studentNames = new Map((studentsResult.data ?? []).map((student: any) => [student.id, student.name]));
+        const studentMap = new Map((studentsResult.data ?? []).map((student: any) => [student.id, student]));
+        const classMap = new Map((classesResult.data ?? []).map((cl: any) => [cl.id, cl]));
         setDetailRows({
           classes: classesResult.data || [],
           students: studentsResult.data || [],
-          attendance: attendanceRows.map(({ status_id, ...row }) => ({ ...row, student_name: studentNames.get(row.student_id) || 'نام دستیاب نہیں', attendance_status: statusLabels.get(status_id) || status_id })),
-          performance: performanceResult.data || [],
+          attendance: attendanceRows.map(({ status_id, ...row }) => { const student: any = studentMap.get(row.student_id); return { ...row, student_name: student?.name || 'نام دستیاب نہیں', roll_no: student?.roll_no || '—', class_name: classMap.get(student?.class_id)?.name || 'کلاس دستیاب نہیں', attendance_status: statusLabels.get(status_id) || status_id }; }),
+          performance: (performanceResult.data || []).map((row: any) => { const student: any = studentMap.get(row.student_id); return { ...row, student_name: student?.name || 'نام دستیاب نہیں', roll_no: student?.roll_no || '—', class_name: classMap.get(row.class_id || student?.class_id)?.name || 'کلاس دستیاب نہیں' }; }),
         });
       }
     }
@@ -272,16 +273,12 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
             <button type="button" onClick={() => { setSelectedAccount(null); setDetailRows(null); }} className="text-xs font-semibold text-[var(--color-muted)] hover:text-[var(--color-text)] self-start sm:self-auto">Close details</button>
           </div>
-          <div className="flex flex-wrap gap-2 p-3 border-b border-[var(--color-border)]">
-            {detailTabs.map((tab) => (
-              <button key={tab.key} type="button" onClick={() => setDetailTab(tab.key)} className={`rounded-xl px-3 py-2 text-xs font-bold ${detailTab === tab.key ? 'bg-primary text-white' : 'bg-[var(--color-bg)] text-[var(--color-muted)]'}`}>{tab.label}</button>
-            ))}
-          </div>
+          <div className="p-3 border-b border-[var(--color-border)] text-sm font-semibold text-[var(--color-muted)]">تمام کلاسز، طلبہ، حاضری اور روزانہ کارکردگی کی تفصیل نیچے ایک ساتھ موجود ہے۔ کسی ریکارڈ کو کھول کر مکمل تفصیل دیکھیں۔</div>
           {detailLoading ? <div className="p-5 text-sm text-[var(--color-muted)]">Loading account records…</div> :
             detailError ? <div role="alert" className="p-4 text-sm text-red-600">{detailError}</div> :
             !detailRows ? <div className="p-4 text-sm text-[var(--color-muted)]">Select a record category.</div> :
             <>
-            {detailTab === 'report' && (
+            {true && (
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   <StatCard label="Total Classes" value={Number(selectedAccount.classes_count || 0)} icon={<GraduationCap className="w-5 h-5" />} />
@@ -304,10 +301,10 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
             )}
             <div className="overflow-x-auto">
-              {detailTab === 'classes' && <table className="w-full text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Class</th><th className="p-3">Students</th><th className="p-3">ID</th></tr></thead><tbody>{detailRows.classes.map((row) => <tr key={row.id} className="border-t border-[var(--color-border)]"><td className="p-3 font-semibold">{row.name}</td><td className="p-3 tabular-nums">{detailRows.students.filter((student) => student.class_id === row.id).length}</td><td className="p-3 font-mono text-xs">{row.id}</td></tr>)}</tbody></table>}
-              {detailTab === 'students' && <table className="w-full min-w-[520px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Student</th><th className="p-3">Roll No.</th><th className="p-3">Class ID</th></tr></thead><tbody>{detailRows.students.map((row) => <tr key={row.id} className="border-t border-[var(--color-border)]"><td className="p-3 font-semibold">{row.name}</td><td className="p-3">{row.roll_no || '—'}</td><td className="p-3 font-mono text-xs">{row.class_id}</td></tr>)}</tbody></table>}
-              {detailTab === 'attendance' && <table className="w-full min-w-[520px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Date</th><th className="p-3">Student Name</th><th className="p-3">Attendance</th></tr></thead><tbody>{detailRows.attendance.map((row, i) => <tr key={`${row.student_id}-${row.attendance_date}-${i}`} className="border-t border-[var(--color-border)]"><td className="p-3">{row.attendance_date}</td><td className="p-3 font-semibold">{row.student_name}</td><td className="p-3 font-semibold">{row.attendance_status}</td></tr>)}</tbody></table>}
-              {detailTab === 'performance' && <table className="w-full min-w-[760px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Date</th><th className="p-3">Student ID</th><th className="p-3">Attendance</th><th className="p-3">Sabaq</th><th className="p-3">Sabqi</th><th className="p-3">Manzil</th></tr></thead><tbody>{detailRows.performance.map((row, i) => <tr key={`${row.student_id}-${row.record_date}-${i}`} className="border-t border-[var(--color-border)]"><td className="p-3">{row.record_date}</td><td className="p-3 font-mono text-xs">{row.student_id}</td><td className="p-3 capitalize">{row.attendance_status}</td><td className="p-3">{row.sabaq_listened ? `Yes · ${row.sabaq_lines} lines` : 'No'}</td><td className="p-3">{row.sabqi_listened ? `Yes · ${row.sabqi_lines} lines` : 'No'}</td><td className="p-3">{row.manzil_listened ? `Yes · ${row.manzil_lines} lines` : 'No'}</td></tr>)}</tbody></table>}
+              {true && <section className="p-3"><h3 className="font-bold mb-2">Classes</h3><table className="w-full text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Class</th><th className="p-3">Students</th><th className="p-3">ID</th></tr></thead><tbody>{detailRows.classes.map((row) => <tr key={row.id} className="border-t border-[var(--color-border)]"><td className="p-3 font-semibold">{row.name}</td><td className="p-3 tabular-nums">{detailRows.students.filter((student) => student.class_id === row.id).length}</td><td className="p-3 font-mono text-xs">{row.id}</td></tr>)}</tbody></table></section>}
+              {true && <section className="p-3"><h3 className="font-bold mb-2">Students</h3><table className="w-full min-w-[520px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Student</th><th className="p-3">Roll No.</th><th className="p-3">Class ID</th></tr></thead><tbody>{detailRows.students.map((row) => <tr key={row.id} className="border-t border-[var(--color-border)]"><td className="p-3 font-semibold">{row.name}</td><td className="p-3">{row.roll_no || '—'}</td><td className="p-3 font-mono text-xs">{row.class_id}</td></tr>)}</tbody></table></section>}
+              {true && <section className="p-3"><h3 className="font-bold mb-2">Attendance Records</h3><table className="w-full min-w-[520px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Date</th><th className="p-3">Student Name</th><th className="p-3">Roll No.</th><th className="p-3">Class</th><th className="p-3">Attendance</th></tr></thead><tbody>{detailRows.attendance.map((row, i) => <tr key={`${row.student_id}-${row.attendance_date}-${i}`} className="border-t border-[var(--color-border)]"><td className="p-3">{row.attendance_date}</td><td className="p-3 font-semibold">{row.student_name}</td><td className="p-3">{row.roll_no}</td><td className="p-3">{row.class_name}</td><td className="p-3 font-semibold">{row.attendance_status}</td></tr>)}</tbody></table></section>}
+              {true && <section className="p-3"><h3 className="font-bold mb-2">Daily Performance Records</h3><table className="w-full min-w-[760px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Date</th><th className="p-3">Student</th><th className="p-3">Class</th><th className="p-3">Attendance</th><th className="p-3">Sabaq</th><th className="p-3">Sabqi</th><th className="p-3">Manzil</th></tr></thead><tbody>{detailRows.performance.map((row, i) => <tr key={`${row.student_id}-${row.record_date}-${i}`} className="border-t border-[var(--color-border)]"><td className="p-3">{row.record_date}</td><td className="p-3 font-semibold">{row.student_name}</td><td className="p-3">{row.class_name}</td><td className="p-3 capitalize">{row.attendance_status}</td><td className="p-3">{row.sabaq_listened ? `Yes · ${row.sabaq_lines} lines` : 'No'}</td><td className="p-3">{row.sabqi_listened ? `Yes · ${row.sabqi_lines} lines` : 'No'}</td><td className="p-3">{row.manzil_listened ? `Yes · ${row.manzil_lines} lines` : 'No'}</td></tr>)}</tbody></table></section>}
             </div>
             </>
           }
