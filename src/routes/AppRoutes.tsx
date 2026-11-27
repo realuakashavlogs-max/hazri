@@ -18,6 +18,8 @@ import { ReportsPage } from '../pages/app/ReportsPage';
 import { PerformanceReportsPage } from '../pages/app/PerformanceReportsPage';
 import { MessagesPage } from '../pages/app/MessagesPage';
 import { SettingsPage } from '../pages/app/SettingsPage';
+import { AdminLoginPage } from '../pages/admin/AdminLoginPage';
+import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage';
 
 const FullScreenLoader: React.FC = () => (
   <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg)]">
@@ -32,12 +34,22 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <AppLayout>{children}</AppLayout>;
 };
 
+const AdminProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isAdmin, loading } = useAuth();
+  if (loading) return <FullScreenLoader />;
+  if (!user) return <Navigate to="/admin/login" replace />;
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
+  return <AppLayout>{children}</AppLayout>;
+};
+
 export const AppRoutes: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Auth Route (Google-only Login) */}
+        {/* Teacher Google sign-in remains unchanged; Admin uses a separate password route. */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/admin" element={<AdminProtectedRoute><AdminDashboardPage /></AdminProtectedRoute>} />
 
         {/* Protected Teacher Routes */}
         <Route
