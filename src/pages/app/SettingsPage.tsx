@@ -80,6 +80,7 @@ export const SettingsPage: React.FC = () => {
         await new Promise<void>((resolve, reject) => {
           w.fbAsyncInit = () => {
             w.FB.init({ appId: whatsappConfig.appId, cookie: true, xfbml: false, version: 'v27.0' });
+            w.__hazriMetaInitialized = true;
             resolve();
           };
           const script = document.createElement('script');
@@ -88,26 +89,33 @@ export const SettingsPage: React.FC = () => {
           script.onerror = () => reject(new Error('Could not load Meta login. Please allow Facebook scripts and try again.'));
           document.body.appendChild(script);
         });
-      } else {
+      } else if (!w.__hazriMetaInitialized) {
         w.FB.init({ appId: whatsappConfig.appId, cookie: true, xfbml: false, version: 'v27.0' });
+        w.__hazriMetaInitialized = true;
       }
 
+      let rejectSignup: (reason: Error) => void = () => {};
       const signupInfoPromise = new Promise<any>((resolve, reject) => {
+        let timeoutId: number;
+        const cleanup = () => {
+          window.removeEventListener('message', listener);
+          window.clearTimeout(timeoutId);
+        };
+        const fail = (error: Error) => { cleanup(); reject(error); };
         const listener = (event: MessageEvent) => {
-          if (!event.origin.endsWith('facebook.com')) return;
+          const hostname = (() => { try { return new URL(event.origin).hostname; } catch { return ''; } })();
+          if (hostname !== 'facebook.com' && !hostname.endsWith('.facebook.com')) return;
           try {
             const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
             if (payload?.type !== 'WA_EMBEDDED_SIGNUP') return;
-            if (payload.event === 'FINISH') resolve(payload.data || {});
-            if (payload.event === 'CANCEL') reject(new Error('WhatsApp Business connection was cancelled.'));
-            if (payload.event === 'ERROR') reject(new Error(payload.data?.error_message || 'Meta could not complete WhatsApp setup.'));
+            if (payload.event === 'FINISH') { cleanup(); resolve(payload.data || {}); }
+            if (payload.event === 'CANCEL') fail(new Error('WhatsApp Business connection was cancelled.'));
+            if (payload.event === 'ERROR') fail(new Error(payload.data?.error_message || 'Meta could not complete WhatsApp setup.'));
           } catch { /* Ignore unrelated Meta SDK messages. */ }
         };
+        rejectSignup = fail;
         window.addEventListener('message', listener);
-        window.setTimeout(() => {
-          window.removeEventListener('message', listener);
-          reject(new Error('WhatsApp signup timed out. Please try again.'));
-        }, 120000);
+        timeoutId = window.setTimeout(() => fail(new Error('WhatsApp signup timed out. Please try again.')), 120000);
       });
       const loginResponse = await new Promise<any>((resolve) => {
         w.FB.login(resolve, {
@@ -119,6 +127,7 @@ export const SettingsPage: React.FC = () => {
       });
       const code = loginResponse?.authResponse?.code;
       if (!code) {
+        rejectSignup(new Error('Meta login was not completed.'));
         throw new Error('Meta login was not completed.');
       }
       const signupInfo = await signupInfoPromise;
