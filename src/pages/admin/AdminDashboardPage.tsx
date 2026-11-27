@@ -14,6 +14,8 @@ type AdminAccount = {
   students_count: number;
   attendance_count: number;
   performance_count: number;
+  last_sign_in_at: string | null;
+  is_active: boolean;
 };
 
 const StatCard: React.FC<{ label: string; value: number; icon: React.ReactNode }> = ({ label, value, icon }) => (
@@ -41,7 +43,7 @@ export const AdminDashboardPage: React.FC = () => {
     if (!supabase) return;
     setLoading(true);
     setError(null);
-    const { data, error: rpcError } = await supabase.rpc('admin_dashboard_overview');
+    const { data, error: rpcError } = await supabase.rpc('admin_dashboard_overview_v2');
     if (rpcError) {
       setError(rpcError.message);
       setAccounts([]);
@@ -89,11 +91,12 @@ export const AdminDashboardPage: React.FC = () => {
 
   const totals = useMemo(() => accounts.reduce((sum, account) => ({
     accounts: sum.accounts + 1,
+    active: sum.active + (account.is_active ? 1 : 0),
     classes: sum.classes + Number(account.classes_count || 0),
     students: sum.students + Number(account.students_count || 0),
     attendance: sum.attendance + Number(account.attendance_count || 0),
     performance: sum.performance + Number(account.performance_count || 0),
-  }), { accounts: 0, classes: 0, students: 0, attendance: 0, performance: 0 }), [accounts]);
+  }), { accounts: 0, active: 0, classes: 0, students: 0, attendance: 0, performance: 0 }), [accounts]);
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-5">
@@ -112,7 +115,8 @@ export const AdminDashboardPage: React.FC = () => {
       {error && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 text-red-700 p-3 text-sm flex items-start gap-2"><AlertCircle className="w-4 h-4 mt-0.5 shrink-0" /><span>Admin data could not be loaded: {error}</span></div>}
 
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Registered Accounts" value={totals.accounts} icon={<Users className="w-5 h-5" />} />
+        <StatCard label="Registered Users" value={totals.accounts} icon={<Users className="w-5 h-5" />} />
+        <StatCard label="Active Users (30 days)" value={totals.active} icon={<Users className="w-5 h-5" />} />
         <StatCard label="Total Classes" value={totals.classes} icon={<GraduationCap className="w-5 h-5" />} />
         <StatCard label="Total Students" value={totals.students} icon={<Users className="w-5 h-5" />} />
         <StatCard label="Attendance Records" value={totals.attendance} icon={<ClipboardCheck className="w-5 h-5" />} />
@@ -135,7 +139,7 @@ export const AdminDashboardPage: React.FC = () => {
             <table className="w-full min-w-[760px] text-sm">
               <thead className="bg-[var(--color-bg)] text-[var(--color-muted)]">
                 <tr className="text-left">
-                  <th className="p-3 font-bold">Account</th><th className="p-3 font-bold">Role</th><th className="p-3 font-bold">Classes</th><th className="p-3 font-bold">Students</th><th className="p-3 font-bold">Attendance</th><th className="p-3 font-bold">Performance</th><th className="p-3 font-bold">Status</th><th className="p-3 font-bold">Details</th>
+                  <th className="p-3 font-bold">Account</th><th className="p-3 font-bold">Role</th><th className="p-3 font-bold">Last Active</th><th className="p-3 font-bold">Classes</th><th className="p-3 font-bold">Students</th><th className="p-3 font-bold">Attendance</th><th className="p-3 font-bold">Performance</th><th className="p-3 font-bold">Status</th><th className="p-3 font-bold">Details</th>
                 </tr>
               </thead>
               <tbody>
@@ -143,6 +147,7 @@ export const AdminDashboardPage: React.FC = () => {
                   <tr key={account.id} className="border-t border-[var(--color-border)]">
                     <td className="p-3"><div className="font-bold text-[var(--color-text)]">{account.full_name || 'Unnamed account'}</div><div className="text-xs text-[var(--color-muted)]">{account.email}</div></td>
                     <td className="p-3 capitalize">{account.role}</td>
+                    <td className="p-3 text-xs whitespace-nowrap">{account.last_sign_in_at ? new Date(account.last_sign_in_at).toLocaleDateString() : "Never"}<div className={account.is_active ? "text-emerald-600 font-bold" : "text-[var(--color-muted)]"}>{account.is_active ? "Active" : "Inactive"}</div></td>
                     <td className="p-3 tabular-nums">{Number(account.classes_count || 0)}</td>
                     <td className="p-3 tabular-nums">{Number(account.students_count || 0)}</td>
                     <td className="p-3 tabular-nums">{Number(account.attendance_count || 0)}</td>
