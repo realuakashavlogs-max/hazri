@@ -101,7 +101,7 @@ export const AdminDashboardPage: React.FC = () => {
       attendance: { table: 'attendance_records', columns: 'student_id,attendance_date,status,user_id', order: 'attendance_date' },
       performance: { table: 'student_daily_performance', columns: 'student_id,record_date,attendance_status,sabaq_listened,sabaq_lines,sabqi_listened,sabqi_lines,manzil_listened,manzil_lines,user_id', order: 'record_date' },
     }[category];
-    const { data, error: queryError } = await supabase.from(config.table).select(config.columns).in('user_id', accountIds).order(config.order, { ascending: false });
+    const { data, error: queryError } = await supabase.from(config.table as 'classes' | 'students' | 'attendance_records' | 'student_daily_performance').select(config.columns).in('user_id', accountIds).order(config.order, { ascending: false });
     if (queryError) setGlobalError(queryError.message);
     else setGlobalRows(data || []);
     setGlobalLoading(false);
