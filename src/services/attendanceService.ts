@@ -146,6 +146,44 @@ export const attendanceService = {
     );
   },
 
+  async getAttendanceForStudentDate(params: {
+    userId: string;
+    studentId: string;
+    date: string;
+  }): Promise<AttendanceRecord | null> {
+    ensureConfigured();
+    const pendingAll = await getAllPendingAttendance();
+    const pendingMatching = pendingAll.find(
+      (p) =>
+        p.user_id === params.userId &&
+        p.student_id === params.studentId &&
+        p.attendance_date === params.date
+    );
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (!pendingMatching) return null;
+      return mergePendingRecords([], [pendingMatching], params.userId)[0] || null;
+    }
+
+    const statusIds = await getStatusIds(params.userId);
+    const { data, error } = await supabase
+      .from('attendance_records')
+      .select('id, user_id, student_id, class_id, attendance_date, status_id, note, created_at, updated_at')
+      .eq('user_id', params.userId)
+      .eq('student_id', params.studentId)
+      .eq('attendance_date', params.date)
+      .maybeSingle();
+
+    if (error) throw error;
+    const remoteRecords = data
+      ? mapRemoteRecords([data as AttendanceDbRow], statusIds)
+      : [];
+    if (pendingMatching) {
+      return mergePendingRecords(remoteRecords, [pendingMatching], params.userId)[0] || null;
+    }
+    return remoteRecords[0] || null;
+  },
+
   async getAttendanceForUserDate(userId: string, date: string): Promise<AttendanceRecord[]> {
     ensureConfigured();
     const pendingAll = await getAllPendingAttendance();
@@ -237,10 +275,12 @@ export const attendanceService = {
       attendanceDate: string;
       status: AttendanceStatusKey;
       note?: string;
-    }[]
+    }[],
+    options?: { syncPerformance?: boolean }
   ): Promise<{ queuedOffline: boolean; count: number }> {
     ensureConfigured();
 
+    const syncPerformance = options?.syncPerformance ?? true;
     const now = new Date().toISOString();
     const rowsToQueue: PendingAttendanceWrite[] = records.map((r) => ({
       id: `${r.studentId}_${r.attendanceDate}`,
@@ -267,6 +307,27 @@ export const attendanceService = {
 
     if (error) throw error;
     await clearSyncedAttendance(rowsToQueue.map((r) => r.id));
+
+    if (syncPerformance && records.length > 0) {
+      try {
+        await Promise.all(
+          records.map((r) =>
+            supabase
+              .from('student_daily_performance')
+              .update({
+                attendance_status: r.status,
+                updated_at: now,
+              })
+              .eq('user_id', userId)
+              .eq('student_id', r.studentId)
+              .eq('record_date', r.attendanceDate)
+          )
+        );
+      } catch {
+        // Non-blocking: attendance save succeeds even if daily performance table is not yet migrated.
+      }
+    }
+
     return { queuedOffline: false, count: rowsToQueue.length };
   },
 

@@ -9,8 +9,9 @@ import {
   LEGACY_ENGLISH_MESSAGE_TEMPLATE,
 } from '../services/settingsService';
 import { setAppLanguage } from '../lib/i18n';
-import { getPendingAttendanceCount } from '../lib/offlineQueue';
+import { getTotalPendingSyncCount } from '../lib/offlineQueue';
 import { attendanceService } from '../services/attendanceService';
+import { performanceService } from '../services/performanceService';
 import { useAuth } from './AuthContext';
 
 interface SettingsContextType {
@@ -57,21 +58,25 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const flushAndRefresh = useCallback(async () => {
     if (user && typeof navigator !== 'undefined' && navigator.onLine) {
-      const synced = await attendanceService.flushOfflineQueue(user.id);
-      if (synced > 0) {
+      const [syncedAtt, syncedPerf] = await Promise.all([
+        attendanceService.flushOfflineQueue(user.id),
+        performanceService.flushOfflineQueue(user.id),
+      ]);
+      if (syncedAtt > 0 || syncedPerf > 0) {
         queryClient.invalidateQueries({ queryKey: ['attendance'] });
         queryClient.invalidateQueries({ queryKey: ['attendance_range'] });
         queryClient.invalidateQueries({ queryKey: ['user_attendance_date'] });
+        queryClient.invalidateQueries({ queryKey: ['performance'] });
       }
     }
-    const count = await getPendingAttendanceCount();
+    const count = await getTotalPendingSyncCount(user?.id);
     setPendingOfflineCount(count);
   }, [user, queryClient]);
 
   useEffect(() => {
     flushAndRefresh();
     const interval = setInterval(async () => {
-      const count = await getPendingAttendanceCount();
+      const count = await getTotalPendingSyncCount(user?.id);
       setPendingOfflineCount(count);
     }, 3000);
     const handleOnline = () => { flushAndRefresh(); };
@@ -80,7 +85,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       clearInterval(interval);
       window.removeEventListener('online', handleOnline);
     };
-  }, [flushAndRefresh]);
+  }, [flushAndRefresh, user?.id]);
 
   const updateSettings = (updates: Partial<LocalSettings>) => {
     const updated = settingsService.saveDeviceSettings(updates);

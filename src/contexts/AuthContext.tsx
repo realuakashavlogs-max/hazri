@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { AuthUser } from '../types/database';
 import { authService, mapSupabaseUser } from '../services/authService';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
@@ -16,8 +17,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const prevUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
@@ -40,7 +43,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (mounted) {
-          setUser(session?.user ? mapSupabaseUser(session.user) : null);
+          const mapped = session?.user ? mapSupabaseUser(session.user) : null;
+          prevUserIdRef.current = mapped?.id ?? null;
+          setUser(mapped);
         }
       } catch (err) {
         console.error('Failed to init session:', err);
@@ -54,7 +59,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
-      setUser(session?.user ? mapSupabaseUser(session.user) : null);
+      const nextUser = session?.user ? mapSupabaseUser(session.user) : null;
+      const nextId = nextUser?.id ?? null;
+      if (prevUserIdRef.current && prevUserIdRef.current !== nextId) {
+        queryClient.clear();
+      }
+      prevUserIdRef.current = nextId;
+      setUser(nextUser);
       setLoading(false);
     });
 
@@ -62,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       mounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [queryClient]);
 
   const signIn = async (email: string, pass: string) => {
     const authUser = await authService.signIn(email, pass);
@@ -75,6 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     await authService.signOut();
+    queryClient.clear();
+    prevUserIdRef.current = null;
     setUser(null);
   };
 

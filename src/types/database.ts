@@ -9,6 +9,13 @@ export type Json =
 export type AttendanceStatusKey = 'present' | 'absent' | 'late' | 'leave';
 export type DailyResultKey = 'excellent' | 'very_good' | 'good' | 'needs_improvement' | 'not_satisfactory';
 
+export type DailyResultKey =
+  | 'excellent'
+  | 'very_good'
+  | 'good'
+  | 'needs_improvement'
+  | 'not_satisfactory';
+
 export type AuthUser = {
   id: string;
   email: string;
@@ -45,6 +52,58 @@ export type AttendanceRecord = {
   updated_at: string;
 };
 
+export type StudentDailyPerformance = {
+  id: string;
+  user_id: string;
+  student_id: string;
+  class_id: string;
+  record_date: string; // YYYY-MM-DD
+  attendance_status: AttendanceStatusKey;
+
+  // Sabaq (New Lesson)
+  sabaq_listened: boolean;
+  sabaq_completed: boolean;
+  sabaq_surah: string | null;
+  sabaq_start_ayah: number | null;
+  sabaq_end_ayah: number | null;
+  sabaq_start_page: number | null;
+  sabaq_end_page: number | null;
+  sabaq_para: number | null;
+  sabaq_grade: string | null;
+  sabaq_remarks: string | null;
+
+  // Sabqi (Recent Revision)
+  sabqi_listened: boolean;
+  sabqi_details: string | null;
+  sabqi_start_page: number | null;
+  sabqi_end_page: number | null;
+  sabqi_completed: boolean;
+  sabqi_remarks: string | null;
+
+  // Manzil (Old Memorization Revision)
+  manzil_listened: boolean;
+  manzil_details: string | null;
+  manzil_start_page: number | null;
+  manzil_end_page: number | null;
+  manzil_completed: boolean;
+  manzil_remarks: string | null;
+
+  // Mistakes Record
+  total_mistakes: number;
+  major_mistakes: number;
+  minor_mistakes: number;
+  atak_count: number;
+  repeated_mistakes: number;
+
+  // Result & Notes
+  daily_result: DailyResultKey;
+  incomplete_reason: string | null;
+  teacher_remarks: string | null;
+
+  created_at: string;
+  updated_at: string;
+};
+
 export type PendingAttendanceWrite = {
   id: string; // local IndexedDB key: `${student_id}_${attendance_date}`
   user_id: string;
@@ -53,6 +112,16 @@ export type PendingAttendanceWrite = {
   attendance_date: string;
   status: AttendanceStatusKey;
   note: string | null;
+  updated_at: string;
+};
+
+export type StudentDailyPerformanceInput = Omit<
+  StudentDailyPerformance,
+  'id' | 'created_at' | 'updated_at'
+>;
+
+export type PendingPerformanceWrite = StudentDailyPerformanceInput & {
+  id: string; // local IndexedDB key: `${user_id}_${student_id}_${record_date}`
   updated_at: string;
 };
 
@@ -174,6 +243,86 @@ export type Database = {
           attendance_date?: string;
           status_id?: string;
           note?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      student_daily_performance: {
+        Row: StudentDailyPerformance;
+        Insert: {
+          id?: string;
+          user_id?: string;
+          student_id: string;
+          class_id: string;
+          record_date: string;
+          attendance_status: AttendanceStatusKey;
+          sabaq_listened?: boolean;
+          sabaq_completed?: boolean;
+          sabaq_surah?: string | null;
+          sabaq_start_ayah?: number | null;
+          sabaq_end_ayah?: number | null;
+          sabaq_start_page?: number | null;
+          sabaq_end_page?: number | null;
+          sabaq_para?: number | null;
+          sabaq_grade?: string | null;
+          sabaq_remarks?: string | null;
+          sabqi_listened?: boolean;
+          sabqi_details?: string | null;
+          sabqi_start_page?: number | null;
+          sabqi_end_page?: number | null;
+          sabqi_completed?: boolean;
+          sabqi_remarks?: string | null;
+          manzil_listened?: boolean;
+          manzil_details?: string | null;
+          manzil_start_page?: number | null;
+          manzil_end_page?: number | null;
+          manzil_completed?: boolean;
+          manzil_remarks?: string | null;
+          total_mistakes?: number;
+          major_mistakes?: number;
+          minor_mistakes?: number;
+          atak_count?: number;
+          repeated_mistakes?: number;
+          daily_result: DailyResultKey;
+          incomplete_reason?: string | null;
+          teacher_remarks?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          class_id?: string;
+          record_date?: string;
+          attendance_status?: AttendanceStatusKey;
+          sabaq_listened?: boolean;
+          sabaq_completed?: boolean;
+          sabaq_surah?: string | null;
+          sabaq_start_ayah?: number | null;
+          sabaq_end_ayah?: number | null;
+          sabaq_start_page?: number | null;
+          sabaq_end_page?: number | null;
+          sabaq_para?: number | null;
+          sabaq_grade?: string | null;
+          sabaq_remarks?: string | null;
+          sabqi_listened?: boolean;
+          sabqi_details?: string | null;
+          sabqi_start_page?: number | null;
+          sabqi_end_page?: number | null;
+          sabqi_completed?: boolean;
+          sabqi_remarks?: string | null;
+          manzil_listened?: boolean;
+          manzil_details?: string | null;
+          manzil_start_page?: number | null;
+          manzil_end_page?: number | null;
+          manzil_completed?: boolean;
+          manzil_remarks?: string | null;
+          total_mistakes?: number;
+          major_mistakes?: number;
+          minor_mistakes?: number;
+          atak_count?: number;
+          repeated_mistakes?: number;
+          daily_result?: DailyResultKey;
+          incomplete_reason?: string | null;
+          teacher_remarks?: string | null;
           updated_at?: string;
         };
         Relationships: [];
