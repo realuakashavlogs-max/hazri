@@ -53,10 +53,10 @@ Deno.serve(async (req: Request) => {
   if (!serviceRoleKey) return json({ error: "Server-side service role is not configured." }, 500);
   const serviceClient = createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: messagingControl, error: messagingControlError } = await serviceClient
-    .from("messaging_settings").select("auto_send_enabled,whatsapp_api_enabled").eq("id", 1).maybeSingle();
+    .from("messaging_settings").select("auto_send_enabled,whatsapp_api_enabled,require_approval_before_send").eq("id", 1).maybeSingle();
   if (messagingControlError) return json({ error: messagingControlError.message }, 500);
-  if (!messagingControl?.auto_send_enabled || !messagingControl?.whatsapp_api_enabled) {
-    return json({ configured: false, sent: 0, failed: 0, message: "Automatic WhatsApp sending is currently disabled by the Hazri administrator.", code: "AUTO_SEND_DISABLED" });
+  if (!messagingControl?.auto_send_enabled || !messagingControl?.whatsapp_api_enabled || messagingControl?.require_approval_before_send) {
+    return json({ configured: false, sent: 0, failed: 0, message: "Automatic WhatsApp sending is disabled or manual approval is still required in Hazri Admin Messaging Controls.", code: "AUTO_SEND_DISABLED" });
   }
   const { data: waConnection, error: waConnectionError } = await serviceClient.from("whatsapp_business_connections_private")
     .select("access_token,phone_number_id,display_phone_number,token_expires_at")
