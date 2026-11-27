@@ -8,10 +8,12 @@ Deno.serve(async (req: Request) => {
   const authorization = req.headers.get("Authorization");
   if (!authorization) return json({ error: "Authentication required" }, 401);
   const url = Deno.env.get("SUPABASE_URL");
+  const keys = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const publishableKey = keys ? JSON.parse(keys).default : anonKey;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !anonKey || !serviceKey) return json({ error: "Supabase function environment is incomplete" }, 500);
-  const authClient = createClient(url, anonKey, { global: { headers: { Authorization: authorization } }, auth: { persistSession: false, autoRefreshToken: false } });
+  if (!url || !publishableKey || !serviceKey) return json({ error: "Supabase function environment is incomplete" }, 500);
+  const authClient = createClient(url, publishableKey, { global: { headers: { Authorization: authorization } }, auth: { persistSession: false, autoRefreshToken: false } });
   const { data: authData, error: authError } = await authClient.auth.getUser();
   if (authError || !authData.user) return json({ error: "Invalid session" }, 401);
   const userId = authData.user.id;
