@@ -524,9 +524,11 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
                         : 'bg-[var(--color-bg)] text-[var(--color-text)] border-[var(--color-border)]'
                   }`}
                 />
-                <span className="shrink-0 text-xs font-bold text-[var(--color-muted)] px-2">
-                  {t('performance.lines_unit')}
-                </span>
+                {section.key === 'sabaq' && (
+                  <span className="shrink-0 text-xs font-bold text-[var(--color-muted)] px-2">
+                    {t('performance.lines_unit')}
+                  </span>
+                )}
               </div>
 
               {!section.listened && (
