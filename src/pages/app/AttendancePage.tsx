@@ -547,7 +547,7 @@ export const AttendancePage: React.FC = () => {
 
       {/* Sticky Save Action Bar at Bottom */}
       {students.length > 0 && (
-        <div className="sticky bottom-[68px] sm:bottom-5 z-20 pt-2">
+        <div className="sticky bottom-[calc(6.5rem+env(safe-area-inset-bottom))] sm:bottom-5 z-20 pt-2">
           <div className="bg-[var(--color-surface)]/90 backdrop-blur-md p-2 rounded-2xl border border-[var(--color-border)] shadow-lg">
             <Button
               onClick={handleSaveAttendance}
