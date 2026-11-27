@@ -56,6 +56,19 @@ export const authService = {
     return mapSupabaseUser(data.user, role);
   },
 
+  async resetPassword(email: string): Promise<void> {
+    ensureConfigured();
+    const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined;
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+    if (error) throw error;
+  },
+
+  async updatePassword(password: string): Promise<void> {
+    ensureConfigured();
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+  },
+
   async signInWithGoogle(): Promise<void> {
     ensureConfigured();
     const { error } = await supabase.auth.signInWithOAuth({
