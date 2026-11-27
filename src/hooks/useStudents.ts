@@ -14,12 +14,8 @@ export function useStudents(classId?: string) {
   });
 
   const createStudentMutation = useMutation({
-    mutationFn: (data: {
-      classId: string;
-      name: string;
-      rollNo?: string;
-      parentPhone?: string;
-    }) => studentsService.createStudent(data),
+    mutationFn: (data: Parameters<typeof studentsService.createStudent>[0]) =>
+      studentsService.createStudent(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students', userId] });
     },

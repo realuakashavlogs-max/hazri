@@ -7,6 +7,7 @@ import { clearOfflineDataForUser } from '../lib/offlineQueue';
 
 interface AuthContextType {
   user: AuthUser | null;
+  isAdmin: boolean;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -43,6 +44,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     let mounted = true;
 
+    async function hydrateSessionUser(sessionUser: NonNullable<Parameters<typeof mapSupabaseUser>[0]> | null) {
+      if (!sessionUser) {
+        if (mounted) setUser(null);
+        return;
+      }
+      const role = await authService.fetchUserRole(sessionUser.id);
+      if (mounted) {
+        setUser(mapSupabaseUser(sessionUser, role));
+      }
+    }
+
     async function initAuth() {
       try {
         const {
@@ -58,6 +70,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const mapped = session?.user ? mapSupabaseUser(session.user) : null;
           prevUserIdRef.current = mapped?.id ?? null;
           setUser(mapped);
+          if (session?.user) {
+            void hydrateSessionUser(session.user);
+          }
         }
       } catch (err) {
         console.error('Failed to init session:', err);
@@ -82,6 +97,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       prevUserIdRef.current = nextId;
       setUser(nextUser);
       setLoading(false);
+      if (session?.user) {
+        void hydrateSessionUser(session.user);
+      }
     });
 
     return () => {
@@ -111,6 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         user,
+        isAdmin: user?.role === 'admin',
         loading,
         signInWithGoogle,
         signOut,

@@ -22,6 +22,7 @@ import {
   Sparkles,
   ArrowRight,
   CalendarCheck,
+  MessageCircle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -259,6 +260,18 @@ export const DashboardPage: React.FC = () => {
             </div>
             <span className="text-sm font-bold text-[var(--color-text)]">
               {t('nav.students')}
+            </span>
+          </Link>
+
+          <Link
+            to="/messages"
+            className="bg-[var(--color-surface)] rounded-2xl p-4 min-h-[64px] border border-[var(--color-border)] hover:shadow-md transition-all duration-150 flex items-center gap-3"
+          >
+            <div className="w-11 h-11 rounded-xl bg-[#16A34A]/10 text-[#16A34A] flex items-center justify-center shrink-0">
+              <MessageCircle className="w-5 h-5" />
+            </div>
+            <span className="text-sm font-bold text-[var(--color-text)]">
+              {t('nav.messages')}
             </span>
           </Link>
 

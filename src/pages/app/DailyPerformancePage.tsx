@@ -10,11 +10,13 @@ import {
   BarChart3,
   CheckCircle2,
   School,
+  MessageCircle,
 } from 'lucide-react';
 import { useClasses } from '../../hooks/useClasses';
 import { useStudents } from '../../hooks/useStudents';
 import { useUserPerformanceForDate } from '../../hooks/usePerformance';
 import { DailyPerformanceForm } from '../../components/performance/DailyPerformanceForm';
+import { ParentMessageComposerModal } from '../../components/messaging/ParentMessageComposerModal';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Button } from '../../components/ui/Button';
@@ -33,6 +35,8 @@ export const DailyPerformancePage: React.FC = () => {
   const [selectedClassId, setSelectedClassId] = useState<string>(urlClassId);
   const [selectedStudentId, setSelectedStudentId] = useState<string>(urlStudentId);
   const [selectedDate, setSelectedDate] = useState<string>(urlDate);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState<boolean>(false);
+  const [justSavedNotice, setJustSavedNotice] = useState<boolean>(false);
 
   useEffect(() => {
     if (urlClassId && classes.some((c) => c.id === urlClassId)) {
@@ -74,6 +78,7 @@ export const DailyPerformancePage: React.FC = () => {
   };
 
   const selectedStudent = students.find((s) => s.id === selectedStudentId) || null;
+  const selectedClass = classes.find((c) => c.id === selectedClassId) || null;
   const recordedStudentIds = new Set(dateRecords.map((r) => r.student_id));
 
   return (
@@ -91,13 +96,23 @@ export const DailyPerformancePage: React.FC = () => {
 
         <div className="flex items-center gap-2 flex-wrap">
           {selectedStudent && (
-            <Link
-              to={`/students/${selectedStudent.id}`}
-              className="inline-flex items-center gap-1.5 min-h-[44px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs sm:text-sm font-bold text-[var(--color-text)] hover:border-primary transition-colors"
-            >
-              <User className="w-4 h-4 text-primary" />
-              <span>{t('performance.view_profile')}</span>
-            </Link>
+            <>
+              <button
+                type="button"
+                onClick={() => setIsMessageModalOpen(true)}
+                className="inline-flex items-center gap-1.5 min-h-[44px] px-3.5 rounded-xl bg-[#16A34A] hover:bg-green-700 text-white text-xs sm:text-sm font-bold transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>WhatsApp</span>
+              </button>
+              <Link
+                to={`/students/${selectedStudent.id}`}
+                className="inline-flex items-center gap-1.5 min-h-[44px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs sm:text-sm font-bold text-[var(--color-text)] hover:border-primary transition-colors"
+              >
+                <User className="w-4 h-4 text-primary" />
+                <span>{t('performance.view_profile')}</span>
+              </Link>
+            </>
           )}
 
           <Link
@@ -264,11 +279,39 @@ export const DailyPerformancePage: React.FC = () => {
           }
         />
       ) : (
-        <DailyPerformanceForm
-          student={selectedStudent}
-          classId={selectedClassId}
-          recordDate={selectedDate}
-        />
+        <>
+          {justSavedNotice && (
+            <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/80 dark:bg-emerald-950/30 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <p className="text-xs sm:text-sm font-bold text-emerald-800 dark:text-emerald-200">
+                Record saved for {selectedStudent.name}. Ready to prepare the Urdu parent WhatsApp report?
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsMessageModalOpen(true)}
+                className="gap-1.5 bg-[#16A34A] hover:bg-green-700 text-white shrink-0"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>Prepare Urdu WhatsApp</span>
+              </Button>
+            </div>
+          )}
+
+          <DailyPerformanceForm
+            student={selectedStudent}
+            classId={selectedClassId}
+            recordDate={selectedDate}
+            onSaved={() => setJustSavedNotice(true)}
+          />
+
+          <ParentMessageComposerModal
+            isOpen={isMessageModalOpen}
+            onClose={() => setIsMessageModalOpen(false)}
+            student={selectedStudent}
+            className={selectedClass?.name || ''}
+            recordDate={selectedDate}
+          />
+        </>
       )}
     </div>
   );

@@ -30,3 +30,19 @@ export function buildWhatsAppLink(params: {
   }
   return `https://wa.me/?text=${encoded}`;
 }
+
+export function buildDirectWhatsAppUrl(
+  phone: string | null | undefined,
+  message: string
+): string {
+  let cleanPhone = normalizePhoneNumber(phone);
+  if (/^03\d{9}$/.test(cleanPhone)) {
+    cleanPhone = `92${cleanPhone.slice(1)}`;
+  }
+  const encoded = encodeURIComponent(message);
+  if (cleanPhone) {
+    return `https://wa.me/${cleanPhone}?text=${encoded}`;
+  }
+  return `https://wa.me/?text=${encoded}`;
+}
+

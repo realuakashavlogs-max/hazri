@@ -25,7 +25,7 @@ import { SkeletonCard } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FIXED_STATUS_MAP } from '../../lib/statuses';
 import { computePerformanceSummary } from '../../lib/performanceStats';
-import { normalizePhoneNumber } from '../../lib/whatsapp';
+import { ParentMessageComposerModal } from '../../components/messaging/ParentMessageComposerModal';
 import type { StudentDailyPerformance } from '../../types/database';
 
 type HistoryRange = 'today' | '7d' | '30d' | 'custom';
@@ -54,6 +54,7 @@ export const StudentProfilePage: React.FC = () => {
   const [customStart, setCustomStart] = useState<string>(daysAgoIso(30));
   const [customEnd, setCustomEnd] = useState<string>(todayStr);
   const [detailRecord, setDetailRecord] = useState<StudentDailyPerformance | null>(null);
+  const [messageDate, setMessageDate] = useState<string | null>(null);
 
   const formSectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -80,8 +81,6 @@ export const StudentProfilePage: React.FC = () => {
     () => computePerformanceSummary(historyRecords),
     [historyRecords]
   );
-
-  const cleanPhone = normalizePhoneNumber(student?.parent_phone);
 
   if (studentsLoading) {
     return <SkeletonCard count={3} />;
@@ -152,26 +151,34 @@ export const StudentProfilePage: React.FC = () => {
             )}
           </div>
 
-          {student.parent_phone && (
-            <div className="flex items-center gap-1.5 text-xs sm:text-sm text-[var(--color-muted)] font-mono">
-              <Phone className="w-3.5 h-3.5" />
-              <span>{student.parent_phone}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {student.parent_phone && (
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-[var(--color-muted)] font-mono">
+                <Phone className="w-3.5 h-3.5" />
+                <span>{student.parent_phone}</span>
+              </div>
+            )}
+            <span
+              className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                student.messaging_consent
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
+              }`}
+            >
+              {student.messaging_consent ? 'Parent Consent ✓' : 'Consent Needed'}
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {cleanPhone && (
-            <a
-              href={`https://wa.me/${cleanPhone}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-xl bg-[#16A34A] text-white text-xs sm:text-sm font-bold hover:bg-green-700 transition-colors"
-            >
-              <MessageCircle className="w-4 h-4" />
-              <span>WhatsApp</span>
-            </a>
-          )}
+          <Button
+            type="button"
+            onClick={() => setMessageDate(formDate)}
+            className="gap-1.5 bg-[#16A34A] hover:bg-green-700 text-white"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span>WhatsApp</span>
+          </Button>
           <Button
             variant={showForm ? 'outline' : 'primary'}
             onClick={() => setShowForm((prev) => !prev)}
@@ -324,13 +331,15 @@ export const StudentProfilePage: React.FC = () => {
               const manzilLines = rec.manzil_listened ? rec.manzil_lines ?? 0 : 0;
 
               return (
-                <button
+                <div
                   key={rec.id}
-                  type="button"
-                  onClick={() => setDetailRecord(rec)}
-                  className="w-full text-start p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] hover:border-primary transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                  className="w-full p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] hover:border-primary transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
                 >
-                  <div className="space-y-1 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setDetailRecord(rec)}
+                    className="flex-1 text-start space-y-1 min-w-0"
+                  >
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-mono text-sm font-extrabold text-[var(--color-text)]">
                         {rec.record_date}
@@ -347,15 +356,30 @@ export const StudentProfilePage: React.FC = () => {
                       Sabqi: {rec.sabqi_listened ? `${t('common.yes')} (${sabqiLines})` : `${t('common.no')} (0)`} •{' '}
                       Manzil: {rec.manzil_listened ? `${t('common.yes')} (${manzilLines})` : `${t('common.no')} (0)`}
                     </p>
-                  </div>
+                  </button>
 
-                  <div className="flex items-center gap-3 text-xs font-bold shrink-0">
+                  <div className="flex items-center gap-2 text-xs font-bold shrink-0">
                     <span className="font-mono text-[var(--color-text)]">
                       {sabaqLines + sabqiLines + manzilLines} {t('performance.lines_unit')}
                     </span>
-                    <span className="text-primary underline">{t('performance.view_record')}</span>
+                    <button
+                      type="button"
+                      onClick={() => setMessageDate(rec.record_date)}
+                      aria-label={`WhatsApp parent for ${rec.record_date}`}
+                      className="inline-flex items-center gap-1 min-h-[38px] px-2.5 rounded-xl bg-[#16A34A]/10 text-[#16A34A] hover:bg-[#16A34A]/20 transition-colors"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>WhatsApp</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDetailRecord(rec)}
+                      className="min-h-[38px] px-2 text-primary underline"
+                    >
+                      {t('performance.view_record')}
+                    </button>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -446,20 +470,44 @@ export const StudentProfilePage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="secondary" onClick={() => setDetailRecord(null)}>
-                {t('common.cancel')}
-              </Button>
+            <div className="flex justify-between gap-2 pt-2 flex-wrap">
               <Button
-                onClick={() => handleEditDate(detailRecord.record_date)}
-                className="gap-1.5"
+                type="button"
+                onClick={() => {
+                  const dt = detailRecord.record_date;
+                  setDetailRecord(null);
+                  setMessageDate(dt);
+                }}
+                className="gap-1.5 bg-[#16A34A] hover:bg-green-700 text-white"
               >
-                <Edit3 className="w-4 h-4" />
-                <span>{t('performance.edit_this_date')}</span>
+                <MessageCircle className="w-4 h-4" />
+                <span>WhatsApp</span>
               </Button>
+              <div className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={() => setDetailRecord(null)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  onClick={() => handleEditDate(detailRecord.record_date)}
+                  className="gap-1.5"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  <span>{t('performance.edit_this_date')}</span>
+                </Button>
+              </div>
             </div>
           </div>
         </Modal>
+      )}
+
+      {messageDate && (
+        <ParentMessageComposerModal
+          isOpen={Boolean(messageDate)}
+          onClose={() => setMessageDate(null)}
+          student={student}
+          className={studentClass?.name || ''}
+          recordDate={messageDate}
+        />
       )}
     </div>
   );

@@ -9,6 +9,7 @@ import {
   GraduationCap,
   Users,
   BarChart3,
+  MessageCircle,
   Settings,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +24,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     { to: '/performance', label: t('nav.performance'), icon: BookOpenCheck },
     { to: '/classes', label: t('nav.classes'), icon: GraduationCap },
     { to: '/students', label: t('nav.students'), icon: Users },
+    { to: '/messages', label: t('nav.messages'), icon: MessageCircle },
     { to: '/reports', label: t('nav.reports'), icon: BarChart3 },
     { to: '/settings', label: t('nav.settings'), icon: Settings },
   ];

@@ -16,6 +16,7 @@ import { StudentsPage } from '../pages/app/StudentsPage';
 import { StudentProfilePage } from '../pages/app/StudentProfilePage';
 import { ReportsPage } from '../pages/app/ReportsPage';
 import { PerformanceReportsPage } from '../pages/app/PerformanceReportsPage';
+import { MessagesPage } from '../pages/app/MessagesPage';
 import { SettingsPage } from '../pages/app/SettingsPage';
 
 const FullScreenLoader: React.FC = () => (
@@ -108,6 +109,14 @@ export const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute>
               <ReportsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/messages"
+          element={
+            <ProtectedRoute>
+              <MessagesPage />
             </ProtectedRoute>
           }
         />

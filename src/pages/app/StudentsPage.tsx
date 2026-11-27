@@ -10,7 +10,8 @@ import { Modal } from '../../components/ui/Modal';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { normalizePhoneNumber } from '../../lib/whatsapp';
-import type { Student } from '../../types/database';
+import { ParentMessageComposerModal } from '../../components/messaging/ParentMessageComposerModal';
+import type { PreferredContactChannel, Student } from '../../types/database';
 import {
   Plus,
   FileSpreadsheet,
@@ -20,6 +21,7 @@ import {
   Trash2,
   Phone,
   BookOpenCheck,
+  ShieldCheck,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -61,8 +63,17 @@ export const StudentsPage: React.FC = () => {
   const [formRoll, setFormRoll] = useState('');
   const [formClassId, setFormClassId] = useState('');
   const [formParentPhone, setFormParentPhone] = useState('');
+  const [formMessagingConsent, setFormMessagingConsent] = useState(false);
+  const [formPreferredChannel, setFormPreferredChannel] =
+    useState<PreferredContactChannel>('whatsapp');
+  const [formTelegramChatId, setFormTelegramChatId] = useState('');
+  const [formParentEmail, setFormParentEmail] = useState('');
   const [formPhoneError, setFormPhoneError] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [whatsAppTarget, setWhatsAppTarget] = useState<{
+    student: Student;
+    className: string;
+  } | null>(null);
 
   const [bulkClassId, setBulkClassId] = useState('');
   const [bulkText, setBulkText] = useState('');
@@ -84,6 +95,10 @@ export const StudentsPage: React.FC = () => {
       selectedClassFilter !== 'all' ? selectedClassFilter : classes[0]?.id || ''
     );
     setFormParentPhone('');
+    setFormMessagingConsent(false);
+    setFormPreferredChannel('whatsapp');
+    setFormTelegramChatId('');
+    setFormParentEmail('');
     setFormPhoneError(undefined);
     setIsAddModalOpen(true);
   };
@@ -94,6 +109,10 @@ export const StudentsPage: React.FC = () => {
     setFormRoll(s.roll_no || '');
     setFormClassId(s.class_id);
     setFormParentPhone(s.parent_phone || '');
+    setFormMessagingConsent(Boolean(s.messaging_consent));
+    setFormPreferredChannel(s.preferred_channel || 'whatsapp');
+    setFormTelegramChatId(s.telegram_chat_id || '');
+    setFormParentEmail(s.parent_email || '');
     setFormPhoneError(undefined);
   };
 
@@ -122,6 +141,13 @@ export const StudentsPage: React.FC = () => {
             name: formName.trim(),
             roll_no: formRoll.trim() || null,
             parent_phone: normalizedPhone || null,
+            messaging_consent: formMessagingConsent,
+            consent_updated_at: formMessagingConsent
+              ? editingStudent.consent_updated_at || new Date().toISOString()
+              : null,
+            preferred_channel: formPreferredChannel,
+            telegram_chat_id: formTelegramChatId.trim() || null,
+            parent_email: formParentEmail.trim() || null,
           },
         });
         setEditingStudent(null);
@@ -132,6 +158,10 @@ export const StudentsPage: React.FC = () => {
           name: formName.trim(),
           rollNo: formRoll.trim() || undefined,
           parentPhone: normalizedPhone || undefined,
+          messagingConsent: formMessagingConsent,
+          preferredChannel: formPreferredChannel,
+          telegramChatId: formTelegramChatId.trim() || undefined,
+          parentEmail: formParentEmail.trim() || undefined,
         });
         setIsAddModalOpen(false);
         showToast('Student added!', 'success');
@@ -275,7 +305,6 @@ export const StudentsPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {filteredStudents.map((s) => {
             const studentClass = classes.find((c) => c.id === s.class_id);
-            const cleanPhone = normalizePhoneNumber(s.parent_phone);
 
             return (
               <div
@@ -312,6 +341,16 @@ export const StudentsPage: React.FC = () => {
                         <span>{s.parent_phone}</span>
                       </div>
                     )}
+                    <div className="flex items-center gap-1.5">
+                      <ShieldCheck
+                        className={`w-3.5 h-3.5 shrink-0 ${
+                          s.messaging_consent ? 'text-[#16A34A]' : 'text-amber-500'
+                        }`}
+                      />
+                      <span>
+                        {s.messaging_consent ? 'Parent consent granted' : 'Consent needed'}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -325,18 +364,20 @@ export const StudentsPage: React.FC = () => {
                       <span>{t('performance.profile_cta')}</span>
                     </Link>
 
-                    {cleanPhone && (
-                      <a
-                        href={`https://wa.me/${cleanPhone}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={`WhatsApp ${s.name}`}
-                        title="WhatsApp"
-                        className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl text-xs font-bold text-[#16A34A] bg-[#16A34A]/10 hover:bg-[#16A34A]/20 transition-colors"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </a>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setWhatsAppTarget({
+                          student: s,
+                          className: studentClass?.name || '',
+                        })
+                      }
+                      aria-label={`WhatsApp ${s.name}`}
+                      title="AI Urdu WhatsApp Message"
+                      className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl text-xs font-bold text-[#16A34A] bg-[#16A34A]/10 hover:bg-[#16A34A]/20 transition-colors"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </button>
                   </div>
 
                   <div className="flex items-center gap-0.5 shrink-0">
@@ -425,6 +466,60 @@ export const StudentsPage: React.FC = () => {
             error={formPhoneError}
             helperText="Include country code without + or spaces for WhatsApp"
           />
+
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3 space-y-3">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formMessagingConsent}
+                onChange={(e) => setFormMessagingConsent(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded accent-[#16A34A]"
+              />
+              <span className="text-xs leading-relaxed">
+                <strong className="block text-[var(--color-text)]">
+                  Parent Messaging Consent Granted
+                </strong>
+                <span className="text-[var(--color-muted)]">
+                  Required before sending daily Urdu attendance and Sabaq updates.
+                </span>
+              </span>
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-xs font-semibold text-[var(--color-text)] mb-1">
+                  Preferred Channel
+                </label>
+                <select
+                  value={formPreferredChannel}
+                  onChange={(e) =>
+                    setFormPreferredChannel(e.target.value as PreferredContactChannel)
+                  }
+                  className="w-full min-h-[42px] px-3 py-2 text-xs font-bold rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)]"
+                >
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="telegram">Telegram</option>
+                  <option value="sms">SMS</option>
+                  <option value="email">Email</option>
+                </select>
+              </div>
+
+              <Input
+                label="Telegram Chat ID (Optional)"
+                placeholder="e.g. 123456789"
+                value={formTelegramChatId}
+                onChange={(e) => setFormTelegramChatId(e.target.value)}
+              />
+            </div>
+
+            <Input
+              label="Parent Email (Optional)"
+              type="email"
+              placeholder="parent@example.com"
+              value={formParentEmail}
+              onChange={(e) => setFormParentEmail(e.target.value)}
+            />
+          </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <Button
@@ -546,6 +641,15 @@ export const StudentsPage: React.FC = () => {
             </div>
           </div>
         </Modal>
+      )}
+      {whatsAppTarget && (
+        <ParentMessageComposerModal
+          isOpen={Boolean(whatsAppTarget)}
+          onClose={() => setWhatsAppTarget(null)}
+          student={whatsAppTarget.student}
+          className={whatsAppTarget.className}
+          recordDate={new Date().toISOString().split('T')[0]}
+        />
       )}
     </div>
   );

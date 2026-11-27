@@ -4,7 +4,7 @@ import {
   isSupabaseConfigured,
   getGoogleOAuthRedirectUrl,
 } from '../lib/supabaseClient';
-import type { AuthUser } from '../types/database';
+import type { AuthUser, UserRole } from '../types/database';
 
 function ensureConfigured() {
   if (!isSupabaseConfigured || !supabase) {
@@ -12,7 +12,7 @@ function ensureConfigured() {
   }
 }
 
-export function mapSupabaseUser(authUser: User): AuthUser {
+export function mapSupabaseUser(authUser: User, role: UserRole = 'user'): AuthUser {
   const metaName = authUser.user_metadata?.full_name || authUser.user_metadata?.name;
   const avatar = authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture;
   return {
@@ -20,10 +20,26 @@ export function mapSupabaseUser(authUser: User): AuthUser {
     email: authUser.email || '',
     full_name: typeof metaName === 'string' && metaName.trim() ? metaName.trim() : null,
     avatar_url: typeof avatar === 'string' && avatar.trim() ? avatar.trim() : null,
+    role,
   };
 }
 
 export const authService = {
+  async fetchUserRole(userId: string): Promise<UserRole> {
+    if (!isSupabaseConfigured || !supabase || !userId) return 'user';
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error || !data) return 'user';
+      return data.role === 'admin' ? 'admin' : 'user';
+    } catch {
+      return 'user';
+    }
+  },
+
   async signInWithGoogle(): Promise<void> {
     ensureConfigured();
     const { error } = await supabase.auth.signInWithOAuth({
@@ -43,3 +59,4 @@ export const authService = {
     }
   },
 };
+

@@ -7,6 +7,7 @@
     "performance": "روزانہ سبق",
     "classes": "کلاسز",
     "students": "طلباء",
+    "messages": "پیغامات",
     "reports": "رپورٹس",
     "settings": "ترتیبات"
   },
@@ -97,7 +98,9 @@
     "was_sabaq_listened": "کیا سبق سنا؟",
     "was_sabqi_listened": "کیا سبقی سنی؟",
     "was_manzil_listened": "کیا منزل سنی؟",
+    "how_much_recited": "کتنا سنایا؟",
     "lines_count": "سطور کی تعداد",
+    "lines_placeholder": "سطور درج کریں (0 یا زیادہ)",
     "lines_unit": "سطور",
     "lines_disabled_hint": "نہیں منتخب کرنے پر سطور خودکار 0 رہیں گی۔",
     "sabaq_lines_total": "سبق سطور",

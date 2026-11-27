@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useMessagingSettings } from '../../hooks/useMessaging';
 import { FIXED_STATUSES } from '../../lib/statuses';
 import { DEFAULT_LOCAL_SETTINGS } from '../../services/settingsService';
 import { Input } from '../../components/ui/Input';
@@ -15,6 +17,8 @@ import {
   MessageSquare,
   User,
   RotateCcw,
+  ShieldCheck,
+  ArrowRight,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -22,6 +26,7 @@ export const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { settings: messagingSettings } = useMessagingSettings();
   const {
     settings,
     effectiveAppName,
@@ -283,6 +288,30 @@ export const SettingsPage: React.FC = () => {
               .replace(/{app_name}/g, effectiveAppName)}
           </div>
         </div>
+      </div>
+
+      {/* AI Parent Messaging & Safety Controls Link */}
+      <div className="bg-[var(--color-surface)] rounded-2xl shadow-sm border border-[var(--color-border)] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="space-y-1">
+          <h2 className="font-bold text-base text-[var(--color-text)] flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-primary" />
+            <span>AI Parent Messaging &amp; Auto-Send Safety</span>
+          </h2>
+          <p className="text-xs text-[var(--color-muted)]">
+            Automatic API Sending:{' '}
+            <strong className={messagingSettings.auto_send_enabled ? 'text-[#16A34A]' : 'text-amber-600'}>
+              {messagingSettings.auto_send_enabled ? 'Enabled by Admin' : 'Disabled by Admin'}
+            </strong>{' '}
+            • Review Urdu drafts, parent consent, and official WhatsApp/Telegram/SMS/Email API status.
+          </p>
+        </div>
+        <Link
+          to="/messages"
+          className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 rounded-xl bg-primary text-white text-xs sm:text-sm font-bold shrink-0 hover:opacity-95 transition-opacity"
+        >
+          <span>Open Messaging Controls</span>
+          <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+        </Link>
       </div>
     </div>
   );
