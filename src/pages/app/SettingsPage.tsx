@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { supabase, isSupabaseConfigured } from '../../lib/supabaseClient';
 import { Link } from 'react-router-dom';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -42,11 +43,120 @@ export const SettingsPage: React.FC = () => {
   const [template, setTemplate] = useState(
     settings.message_template || DEFAULT_LOCAL_SETTINGS.message_template
   );
+  const [whatsappConfig, setWhatsappConfig] = useState<{ configured: boolean; appId: string; configId: string } | null>(null);
+  const [whatsappConnection, setWhatsappConnection] = useState<any>(null);
+  const [whatsappBusy, setWhatsappBusy] = useState(false);
 
   useEffect(() => {
     setAppName(settings.app_display_name || 'Hazri Book');
     setTemplate(settings.message_template || DEFAULT_LOCAL_SETTINGS.message_template);
   }, [settings.app_display_name, settings.message_template]);
+
+  useEffect(() => {
+    let active = true;
+    const loadWhatsAppConnection = async () => {
+      if (!isSupabaseConfigured || !supabase) return;
+      const [configResult, statusResult] = await Promise.all([
+        supabase.functions.invoke('whatsapp-connect', { body: { action: 'config' } }),
+        supabase.functions.invoke('whatsapp-connect', { body: { action: 'status' } }),
+      ]);
+      if (!active) return;
+      if (!configResult.error && configResult.data) setWhatsappConfig(configResult.data);
+      if (!statusResult.error && statusResult.data) setWhatsappConnection(statusResult.data.connection || null);
+    };
+    void loadWhatsAppConnection();
+    return () => { active = false; };
+  }, []);
+
+  const connectWhatsAppBusiness = async () => {
+    if (!whatsappConfig?.configured || !whatsappConfig.appId || !whatsappConfig.configId || !supabase) {
+      showToast('WhatsApp Business connection has not been configured by Hazri yet.', 'error');
+      return;
+    }
+    setWhatsappBusy(true);
+    try {
+      const w = window as any;
+      if (!w.FB) {
+        await new Promise<void>((resolve, reject) => {
+          w.fbAsyncInit = () => {
+            w.FB.init({ appId: whatsappConfig.appId, cookie: true, xfbml: false, version: 'v27.0' });
+            resolve();
+          };
+          const script = document.createElement('script');
+          script.src = 'https://connect.facebook.net/en_US/sdk.js';
+          script.async = true;
+          script.onerror = () => reject(new Error('Could not load Meta login. Please allow Facebook scripts and try again.'));
+          document.body.appendChild(script);
+        });
+      } else {
+        w.FB.init({ appId: whatsappConfig.appId, cookie: true, xfbml: false, version: 'v27.0' });
+      }
+
+      let finishSignup: ((value: any) => void) | null = null;
+      let failSignup: ((reason: Error) => void) | null = null;
+      const signupInfoPromise = new Promise<any>((resolve, reject) => {
+        finishSignup = resolve;
+        failSignup = reject;
+        const listener = (event: MessageEvent) => {
+          if (!event.origin.endsWith('facebook.com')) return;
+          try {
+            const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+            if (payload?.type !== 'WA_EMBEDDED_SIGNUP') return;
+            if (payload.event === 'FINISH') resolve(payload.data || {});
+            if (payload.event === 'CANCEL') reject(new Error('WhatsApp Business connection was cancelled.'));
+            if (payload.event === 'ERROR') reject(new Error(payload.data?.error_message || 'Meta could not complete WhatsApp setup.'));
+          } catch { /* Ignore unrelated Meta SDK messages. */ }
+        };
+        window.addEventListener('message', listener);
+        window.setTimeout(() => {
+          window.removeEventListener('message', listener);
+          reject(new Error('WhatsApp signup timed out. Please try again.'));
+        }, 120000);
+      });
+      const loginResponse = await new Promise<any>((resolve) => {
+        w.FB.login(resolve, {
+          config_id: whatsappConfig.configId,
+          response_type: 'code',
+          override_default_response_type: true,
+          extras: { setup: {} },
+        });
+      });
+      const code = loginResponse?.authResponse?.code;
+      if (!code) {
+        if (failSignup) failSignup(new Error('Meta login did not return an authorization code.'));
+        throw new Error('Meta login was not completed.');
+      }
+      const signupInfo = await signupInfoPromise;
+      if (!signupInfo?.waba_id || !signupInfo?.phone_number_id) {
+        throw new Error('Meta did not return the WhatsApp Business account and phone number details.');
+      }
+      const { data, error } = await supabase.functions.invoke('whatsapp-connect', {
+        body: { action: 'exchange', code, wabaId: signupInfo.waba_id, phoneNumberId: signupInfo.phone_number_id },
+      });
+      if (error || !data?.connected) throw new Error(data?.error || error?.message || 'Could not save WhatsApp Business connection.');
+      setWhatsappConnection(data.connection);
+      showToast('WhatsApp Business connected successfully!', 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'WhatsApp connection failed.', 'error');
+    } finally {
+      setWhatsappBusy(false);
+    }
+  };
+
+  const disconnectWhatsAppBusiness = async () => {
+    if (!supabase) return;
+    setWhatsappBusy(true);
+    try {
+      const { error } = await supabase.functions.invoke('whatsapp-connect', { body: { action: 'disconnect' } });
+      if (error) throw error;
+      setWhatsappConnection(null);
+      showToast('WhatsApp Business disconnected.', 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not disconnect WhatsApp.', 'error');
+    } finally {
+      setWhatsappBusy(false);
+    }
+  };
 
   const insertPlaceholder = (tag: string) => {
     const next = `${template} ${tag}`.trim();
@@ -208,6 +318,45 @@ export const SettingsPage: React.FC = () => {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Teacher-owned WhatsApp Business connection */}
+      <div className="bg-[var(--color-surface)] rounded-2xl shadow-sm border border-[var(--color-border)] p-5 space-y-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="font-bold text-base text-[var(--color-text)] flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-[#16A34A]" />
+              <span>اپنا WhatsApp Business کنیکٹ کریں</span>
+            </h2>
+            <p className="text-xs text-[var(--color-muted)] mt-1">
+              غیر حاضری کے پیغامات آپ کے اپنے منسلک WhatsApp Business نمبر سے والدین کو بھیجے جائیں گے۔
+            </p>
+          </div>
+          <span className={whatsappConnection ? 'text-xs font-bold text-[#16A34A]' : 'text-xs font-bold text-amber-600'}>
+            {whatsappConnection ? 'Connected' : 'Not connected'}
+          </span>
+        </div>
+        {whatsappConnection ? (
+          <div className="rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] p-3 space-y-1">
+            <p className="text-sm font-bold text-[var(--color-text)]">{whatsappConnection.verified_name || 'WhatsApp Business'}</p>
+            <p className="text-sm text-[var(--color-muted)]" dir="ltr">{whatsappConnection.display_phone_number || 'Connected number'}</p>
+            <Button variant="outline" size="md" disabled={whatsappBusy} onClick={disconnectWhatsAppBusiness}>Disconnect WhatsApp</Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Button size="md" disabled={whatsappBusy || !whatsappConfig?.configured} onClick={connectWhatsAppBusiness}>
+              {whatsappBusy ? 'Connecting…' : 'Connect with Meta / Facebook'}
+            </Button>
+            {!whatsappConfig?.configured && (
+              <p className="text-xs text-amber-600">
+                Meta Embedded Signup ابھی Hazri کے Meta App credentials اور Configuration ID کا منتظر ہے۔ یہ سرور پر محفوظ طریقے سے سیٹ ہونے کے بعد بٹن فعال ہو جائے گا۔
+              </p>
+            )}
+            <p className="text-xs text-[var(--color-muted)]">
+              اپنا WhatsApp Business اکاؤنٹ Meta کے محفوظ صفحے پر خود منتخب اور منظور کریں۔ Hazri آپ کا Facebook یا WhatsApp پاس ورڈ نہیں دیکھتا۔
+            </p>
+          </div>
+        )}
       </div>
 
       {/* WhatsApp Message Template Card */}
