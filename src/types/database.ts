@@ -62,6 +62,7 @@ export type StudentDailyPerformance = {
 
   // Sabaq (New Lesson)
   sabaq_listened: boolean;
+  sabaq_lines: number;
   sabaq_completed: boolean;
   sabaq_surah: string | null;
   sabaq_start_ayah: number | null;
@@ -74,6 +75,7 @@ export type StudentDailyPerformance = {
 
   // Sabqi (Recent Revision)
   sabqi_listened: boolean;
+  sabqi_lines: number;
   sabqi_details: string | null;
   sabqi_start_page: number | null;
   sabqi_end_page: number | null;
@@ -82,6 +84,7 @@ export type StudentDailyPerformance = {
 
   // Manzil (Old Memorization Revision)
   manzil_listened: boolean;
+  manzil_lines: number;
   manzil_details: string | null;
   manzil_start_page: number | null;
   manzil_end_page: number | null;
@@ -133,23 +136,6 @@ export type LocalSettings = {
   message_template: string;
 };
 
-
-export type StudentDailyPerformance = {
-  id: string; user_id: string; student_id: string; class_id: string; record_date: string;
-  attendance_status: AttendanceStatusKey;
-  sabaq_listened: boolean; sabaq_completed: boolean; sabaq_surah: string | null;
-  sabaq_start_ayah: number | null; sabaq_end_ayah: number | null; sabaq_start_page: number | null;
-  sabaq_end_page: number | null; sabaq_para: number | null; sabaq_grade: string | null; sabaq_remarks: string | null;
-  sabqi_listened: boolean; sabqi_details: string | null; sabqi_start_page: number | null;
-  sabqi_end_page: number | null; sabqi_completed: boolean; sabqi_remarks: string | null;
-  manzil_listened: boolean; manzil_details: string | null; manzil_start_page: number | null;
-  manzil_end_page: number | null; manzil_completed: boolean; manzil_remarks: string | null;
-  total_mistakes: number; major_mistakes: number; minor_mistakes: number; atak_count: number;
-  repeated_mistakes: number; daily_result: DailyResultKey; incomplete_reason: string | null;
-  teacher_remarks: string | null; created_at: string; updated_at: string;
-};
-export type StudentDailyPerformanceInput = Omit<StudentDailyPerformance, 'id' | 'created_at' | 'updated_at'>;
-export type PendingPerformanceWrite = StudentDailyPerformanceInput & { id: string; updated_at: string };
 
 export type Database = {
   public: {
