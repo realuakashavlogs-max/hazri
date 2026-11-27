@@ -29,6 +29,14 @@ jobs:
       - name: Type-check and build production app
         run: npm run build
 
+      - name: Save production build for Cloudflare deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: hazri-dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Deploy to Cloudflare Workers
         if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
         uses: cloudflare/wrangler-action@v3
