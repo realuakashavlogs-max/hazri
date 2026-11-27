@@ -40,7 +40,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [globalCategory, setGlobalCategory] = useState<'classes' | 'students' | 'attendance' | 'performance' | null>(null);
-  const [globalRows, setGlobalRows] = useState<any[]>([]);\n  const [expandedGlobalRow, setExpandedGlobalRow] = useState<string | null>(null);
+  const [globalRows, setGlobalRows] = useState<any[]>([]);
+  const [expandedGlobalRow, setExpandedGlobalRow] = useState<string | null>(null);
   const [globalLoading, setGlobalLoading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
 
