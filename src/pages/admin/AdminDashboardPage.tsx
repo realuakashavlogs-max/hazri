@@ -34,7 +34,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<AdminAccount | null>(null);
-  const [detailTab, setDetailTab] = useState<'classes' | 'students' | 'attendance' | 'performance'>('classes');
+  const [detailTab, setDetailTab] = useState<'report' | 'classes' | 'students' | 'attendance' | 'performance'>('report');
   const [detailRows, setDetailRows] = useState<{ classes: any[]; students: any[]; attendance: any[]; performance: any[] } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -83,6 +83,7 @@ export const AdminDashboardPage: React.FC = () => {
   };
 
   const detailTabs = [
+    { key: 'report', label: 'View Report' },
     { key: 'classes', label: 'Classes' },
     { key: 'students', label: 'Students' },
     { key: 'attendance', label: 'Attendance records' },
@@ -152,7 +153,7 @@ export const AdminDashboardPage: React.FC = () => {
                     <td className="p-3 tabular-nums">{Number(account.students_count || 0)}</td>
                     <td className="p-3 tabular-nums">{Number(account.attendance_count || 0)}</td>
                     <td className="p-3 tabular-nums">{Number(account.performance_count || 0)}</td>
-                    <td className="p-3"><span className={account.is_blocked ? 'text-red-600 font-bold' : 'text-emerald-600 font-bold'}>{account.is_blocked ? 'Blocked' : 'Active'}</span></td><td className="p-3"><button type="button" onClick={() => void loadAccountDetails(account)} className="rounded-lg bg-primary/10 text-primary px-3 py-2 text-xs font-bold hover:bg-primary/15">View records</button></td>
+                    <td className="p-3"><span className={account.is_blocked ? 'text-red-600 font-bold' : 'text-emerald-600 font-bold'}>{account.is_blocked ? 'Blocked' : 'Active'}</span></td><td className="p-3"><button type="button" onClick={() => void loadAccountDetails(account)} className="rounded-lg bg-primary/10 text-primary px-3 py-2 text-xs font-bold hover:bg-primary/15">View Report</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -177,6 +178,28 @@ export const AdminDashboardPage: React.FC = () => {
           {detailLoading ? <div className="p-5 text-sm text-[var(--color-muted)]">Loading account records…</div> :
             detailError ? <div role="alert" className="p-4 text-sm text-red-600">{detailError}</div> :
             !detailRows ? <div className="p-4 text-sm text-[var(--color-muted)]">Select a record category.</div> :
+            {detailTab === 'report' && (
+              <div className="p-4 space-y-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <StatCard label="Total Classes" value={Number(selectedAccount.classes_count || 0)} icon={<GraduationCap className="w-5 h-5" />} />
+                  <StatCard label="Total Students" value={Number(selectedAccount.students_count || 0)} icon={<Users className="w-5 h-5" />} />
+                  <StatCard label="Attendance Records" value={Number(selectedAccount.attendance_count || 0)} icon={<ClipboardCheck className="w-5 h-5" />} />
+                  <StatCard label="Performance Records" value={Number(selectedAccount.performance_count || 0)} icon={<BookOpenCheck className="w-5 h-5" />} />
+                </div>
+                {detailRows && (
+                  <div className="rounded-xl border border-[var(--color-border)] p-4">
+                    <h3 className="font-bold text-[var(--color-text)] mb-3">Report Details</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                      <div><p className="text-[var(--color-muted)]">Classes loaded</p><p className="font-extrabold text-xl">{detailRows.classes.length}</p></div>
+                      <div><p className="text-[var(--color-muted)]">Students loaded</p><p className="font-extrabold text-xl">{detailRows.students.length}</p></div>
+                      <div><p className="text-[var(--color-muted)]">Attendance rows</p><p className="font-extrabold text-xl">{detailRows.attendance.length}</p></div>
+                      <div><p className="text-[var(--color-muted)]">Performance rows</p><p className="font-extrabold text-xl">{detailRows.performance.length}</p></div>
+                    </div>
+                    <p className="mt-3 text-xs text-[var(--color-muted)]">Use the Classes, Students, Attendance records and Performance records tabs to inspect the account's full records.</p>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="overflow-x-auto">
               {detailTab === 'classes' && <table className="w-full text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Class</th><th className="p-3">Students</th><th className="p-3">ID</th></tr></thead><tbody>{detailRows.classes.map((row) => <tr key={row.id} className="border-t border-[var(--color-border)]"><td className="p-3 font-semibold">{row.name}</td><td className="p-3 tabular-nums">{detailRows.students.filter((student) => student.class_id === row.id).length}</td><td className="p-3 font-mono text-xs">{row.id}</td></tr>)}</tbody></table>}
               {detailTab === 'students' && <table className="w-full min-w-[520px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Student</th><th className="p-3">Roll No.</th><th className="p-3">Class ID</th></tr></thead><tbody>{detailRows.students.map((row) => <tr key={row.id} className="border-t border-[var(--color-border)]"><td className="p-3 font-semibold">{row.name}</td><td className="p-3">{row.roll_no || '—'}</td><td className="p-3 font-mono text-xs">{row.class_id}</td></tr>)}</tbody></table>}
