@@ -41,7 +41,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [globalCategory, setGlobalCategory] = useState<'classes' | 'students' | 'attendance' | 'performance' | null>(null);
-  const [globalRows, setGlobalRows] = useState<any[]>([]);
+  const [globalRows, setGlobalRows] = useState<any[]>([]);\n  const [expandedGlobalRow, setExpandedGlobalRow] = useState<string | null>(null);
   const [globalLoading, setGlobalLoading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
 
@@ -101,36 +101,46 @@ export const AdminDashboardPage: React.FC = () => {
     if (!supabase || accounts.length === 0) return;
     setGlobalCategory(category);
     setGlobalRows([]);
+    setExpandedGlobalRow(null);
     setGlobalError(null);
     setGlobalLoading(true);
     const accountIds = accounts.map((account) => account.id);
     const config = {
-      classes: { table: 'classes', columns: 'id,name,user_id,created_at', order: 'created_at' },
+      classes: { table: 'classes', columns: 'id,name,section,user_id,created_at', order: 'created_at' },
       students: { table: 'students', columns: 'id,name,roll_no,class_id,user_id', order: 'name' },
-      attendance: { table: 'attendance_records', columns: 'student_id,class_id,attendance_date,status_id,user_id', order: 'attendance_date' },
-      performance: { table: 'student_daily_performance', columns: 'student_id,record_date,attendance_status,sabaq_listened,sabaq_lines,sabqi_listened,sabqi_lines,manzil_listened,manzil_lines,user_id', order: 'record_date' },
+      attendance: { table: 'attendance_records', columns: 'id,student_id,class_id,attendance_date,status_id,user_id', order: 'attendance_date' },
+      performance: { table: 'student_daily_performance', columns: 'id,student_id,class_id,record_date,attendance_status,sabaq_listened,sabaq_lines,sabqi_listened,sabqi_lines,manzil_listened,manzil_lines,user_id', order: 'record_date' },
     }[category];
     const { data, error: queryError } = await supabase.from(config.table as 'classes' | 'students' | 'attendance_records' | 'student_daily_performance').select(config.columns).in('user_id', accountIds).order(config.order, { ascending: false });
     if (queryError) {
       setGlobalError(queryError.message);
-    } else if (category === 'attendance' && data) {
-      const { data: statuses, error: statusError } = await supabase.from('attendance_statuses').select('id,label_en,label_ur');
-      if (statusError) {
-        setGlobalError(statusError.message);
-      } else {
-        const statusRows = (statuses ?? []) as unknown as Array<{ id: string; label_en: string | null; label_ur: string | null }>;
-        const statusLabels = new Map(statusRows.map((status) => [status.id, status.label_ur || status.label_en || status.id]));
-        const attendanceRows = (data ?? []) as unknown as Array<Record<string, any>>;
-        const { data: studentRows, error: studentError } = await supabase.from('students').select('id,name,user_id').in('user_id', accountIds);
-        if (studentError) {
-          setGlobalError(studentError.message);
-        } else {
-          const studentNames = new Map((studentRows ?? []).map((student: any) => [student.id, student.name]));
-          setGlobalRows(attendanceRows.map(({ status_id, ...row }) => ({ ...row, student_name: studentNames.get(row.student_id) || 'نام دستیاب نہیں', attendance_status: statusLabels.get(status_id) || status_id })));
-        }
-      }
+      setGlobalLoading(false);
+      return;
+    }
+    const [studentResult, classResult, statusResult] = await Promise.all([
+      supabase.from('students').select('id,name,roll_no,class_id,user_id').in('user_id', accountIds),
+      supabase.from('classes').select('id,name,section,user_id').in('user_id', accountIds),
+      supabase.from('attendance_statuses').select('id,label_en,label_ur'),
+    ]);
+    const lookupError = studentResult.error || classResult.error || statusResult.error;
+    if (lookupError) {
+      setGlobalError(lookupError.message);
     } else {
-      setGlobalRows(data || []);
+      const students = studentResult.data ?? [];
+      const classes = classResult.data ?? [];
+      const studentMap = new Map(students.map((s: any) => [s.id, s]));
+      const classMap = new Map(classes.map((cl: any) => [cl.id, cl]));
+      const statusMap = new Map((statusResult.data ?? []).map((st: any) => [st.id, st.label_ur || st.label_en || st.id]));
+      const enriched = (data ?? []).map((raw: any) => {
+        const student = studentMap.get(raw.student_id);
+        const classInfo = classMap.get(raw.class_id || student?.class_id);
+        const accountEmail = accounts.find((a) => a.id === raw.user_id)?.email || 'Account';
+        if (category === 'classes') return { ...raw, class_name: raw.name, account_email: accountEmail };
+        if (category === 'students') return { ...raw, student_name: raw.name, class_name: classMap.get(raw.class_id)?.name || 'کلاس دستیاب نہیں', account_email: accountEmail };
+        if (category === 'attendance') return { ...raw, student_name: student?.name || 'نام دستیاب نہیں', roll_no: student?.roll_no || '—', class_name: classInfo?.name || 'کلاس دستیاب نہیں', class_section: classInfo?.section || '', attendance_status: statusMap.get(raw.status_id) || raw.status_id, account_email: accountEmail };
+        return { ...raw, student_name: student?.name || 'نام دستیاب نہیں', roll_no: student?.roll_no || '—', class_name: classInfo?.name || 'کلاس دستیاب نہیں', class_section: classInfo?.section || '', account_email: accountEmail };
+      });
+      setGlobalRows(enriched);
     }
     setGlobalLoading(false);
   };
@@ -193,19 +203,30 @@ export const AdminDashboardPage: React.FC = () => {
             <button type="button" onClick={() => setGlobalCategory(null)} className="rounded-lg px-3 py-2 text-xs font-bold bg-[var(--color-bg)]">Close</button>
           </div>
           {globalLoading ? <div className="p-5 text-sm text-[var(--color-muted)]">Loading records…</div> : globalError ? <div role="alert" className="p-4 text-sm text-red-600">{globalError}</div> : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[620px] text-sm">
-                <thead className="bg-[var(--color-bg)]"><tr className="text-left text-[var(--color-muted)]">
-                  <th className="p-3">Account</th>
-                  {(globalRows[0] ? Object.keys(globalRows[0]).filter((key) => key !== 'user_id') : []).map((key) => <th key={key} className="p-3 capitalize">{key.replace(/_/g, ' ')}</th>)}
-                </tr></thead>
-                <tbody>{globalRows.map((row, index) => (
-                  <tr key={row.id || `${row.student_id}-${index}`} className="border-t border-[var(--color-border)]">
-                    <td className="p-3 text-xs font-semibold">{accounts.find((account) => account.id === row.user_id)?.email || 'Account'}</td>
-                    {Object.entries(row).filter(([key]) => key !== 'user_id').map(([key, value]) => <td key={key} className="p-3 text-xs">{typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value == null ? '—' : String(value)}</td>)}
-                  </tr>
-                ))}</tbody>
-              </table>
+            <div className="divide-y divide-[var(--color-border)]">
+              {globalRows.map((row, index) => {
+                const rowKey = String(row.id || `${row.student_id}-${index}`);
+                const expanded = expandedGlobalRow === rowKey;
+                const detailFields: Array<[string, any]> = globalCategory === 'attendance'
+                  ? [['اکاؤنٹ', row.account_email], ['طالب علم', row.student_name], ['رول نمبر', row.roll_no], ['کلاس', row.class_name], ['سیکشن', row.class_section || '—'], ['تاریخ', row.attendance_date], ['حاضری', row.attendance_status]]
+                  : globalCategory === 'performance'
+                    ? [['اکاؤنٹ', row.account_email], ['طالب علم', row.student_name], ['رول نمبر', row.roll_no], ['کلاس', row.class_name], ['سیکشن', row.class_section || '—'], ['تاریخ', row.record_date], ['حاضری', row.attendance_status], ['سبق سنایا', row.sabaq_listened ? 'ہاں' : 'نہیں'], ['سبق لائنیں', row.sabaq_lines ?? 0], ['سبقی سنائی', row.sabqi_listened ? 'ہاں' : 'نہیں'], ['سبقی لائنیں', row.sabqi_lines ?? 0], ['منزل سنائی', row.manzil_listened ? 'ہاں' : 'نہیں'], ['منزل لائنیں', row.manzil_lines ?? 0]]
+                    : globalCategory === 'students'
+                      ? [['اکاؤنٹ', row.account_email], ['طالب علم', row.student_name], ['رول نمبر', row.roll_no], ['کلاس', row.class_name]]
+                      : [['اکاؤنٹ', row.account_email], ['کلاس', row.class_name], ['سیکشن', row.section || '—'], ['تخلیق کی تاریخ', row.created_at ? new Date(row.created_at).toLocaleDateString() : '—']];
+                return <div key={rowKey} className="p-3">
+                  <button type="button" onClick={() => setExpandedGlobalRow(expanded ? null : rowKey)} className="w-full text-left rounded-xl p-3 hover:bg-[var(--color-bg)] focus:outline-none focus:ring-2 focus:ring-primary">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm text-[var(--color-text)]">{globalCategory === 'attendance' || globalCategory === 'performance' ? row.student_name : globalCategory === 'students' ? row.student_name : row.class_name}</p>
+                        <p className="text-xs text-[var(--color-muted)]">{globalCategory === 'attendance' ? `${row.class_name} · ${row.attendance_status} · ${row.attendance_date}` : globalCategory === 'performance' ? `${row.class_name} · ${row.record_date}` : row.account_email}</p>
+                      </div>
+                      <span className="text-xs font-semibold text-primary">{expanded ? 'تفصیل بند کریں' : 'مکمل تفصیل دیکھیں'}</span>
+                    </div>
+                  </button>
+                  {expanded && <div className="mt-2 rounded-xl bg-[var(--color-bg)] p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">{detailFields.map(([label, value]) => <div key={label}><p className="text-xs text-[var(--color-muted)]">{label}</p><p className="font-semibold text-sm text-[var(--color-text)]">{value == null || value === '' ? '—' : String(value)}</p></div>)}</div>}
+                </div>;
+              })}
               {globalRows.length === 0 && <p className="p-5 text-sm text-[var(--color-muted)]">No records found.</p>}
             </div>
           )}
