@@ -98,12 +98,23 @@ export const AdminDashboardPage: React.FC = () => {
     const config = {
       classes: { table: 'classes', columns: 'id,name,user_id,created_at', order: 'created_at' },
       students: { table: 'students', columns: 'id,name,roll_no,class_id,user_id', order: 'name' },
-      attendance: { table: 'attendance_records', columns: 'student_id,attendance_date,status,user_id', order: 'attendance_date' },
+      attendance: { table: 'attendance_records', columns: 'student_id,class_id,attendance_date,status_id,user_id', order: 'attendance_date' },
       performance: { table: 'student_daily_performance', columns: 'student_id,record_date,attendance_status,sabaq_listened,sabaq_lines,sabqi_listened,sabqi_lines,manzil_listened,manzil_lines,user_id', order: 'record_date' },
     }[category];
     const { data, error: queryError } = await supabase.from(config.table as 'classes' | 'students' | 'attendance_records' | 'student_daily_performance').select(config.columns).in('user_id', accountIds).order(config.order, { ascending: false });
-    if (queryError) setGlobalError(queryError.message);
-    else setGlobalRows(data || []);
+    if (queryError) {
+      setGlobalError(queryError.message);
+    } else if (category === 'attendance' && data) {
+      const { data: statuses, error: statusError } = await supabase.from('attendance_statuses').select('id,label_en,label_ur');
+      if (statusError) {
+        setGlobalError(statusError.message);
+      } else {
+        const statusLabels = new Map((statuses || []).map((status) => [status.id, status.label_ur || status.label_en]));
+        setGlobalRows(data.map((row) => ({ ...row, attendance_status: statusLabels.get(row.status_id) || row.status_id })).map(({ status_id, ...row }) => row));
+      }
+    } else {
+      setGlobalRows(data || []);
+    }
     setGlobalLoading(false);
   };
 
