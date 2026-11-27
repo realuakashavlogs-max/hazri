@@ -40,6 +40,22 @@ export const authService = {
     }
   },
 
+  async signInWithPassword(email: string, password: string): Promise<AuthUser> {
+    ensureConfigured();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    if (error) throw error;
+
+    const role = await this.fetchUserRole(data.user.id);
+    if (role !== 'admin') {
+      await supabase.auth.signOut();
+      throw new Error('یہ اکاؤنٹ ایڈمن کے طور پر مجاز نہیں ہے۔');
+    }
+    return mapSupabaseUser(data.user, role);
+  },
+
   async signInWithGoogle(): Promise<void> {
     ensureConfigured();
     const { error } = await supabase.auth.signInWithOAuth({
@@ -59,4 +75,3 @@ export const authService = {
     }
   },
 };
-
