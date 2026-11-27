@@ -52,8 +52,7 @@ Deno.serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!serviceRoleKey) return json({ error: "Server-side service role is not configured." }, 500);
   const serviceClient = createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { data: waConnection, error: waConnectionError } = await serviceClient.schema("private")
-    .from("whatsapp_business_connections")
+  const { data: waConnection, error: waConnectionError } = await serviceClient.from("whatsapp_business_connections_private")
     .select("access_token,phone_number_id,display_phone_number,token_expires_at")
     .eq("user_id", userId).maybeSingle();
   if (waConnectionError) return json({ error: waConnectionError.message }, 500);
