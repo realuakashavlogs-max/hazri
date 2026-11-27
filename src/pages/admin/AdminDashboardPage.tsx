@@ -18,15 +18,17 @@ type AdminAccount = {
   is_active: boolean;
 };
 
-const StatCard: React.FC<{ label: string; value: number; icon: React.ReactNode }> = ({ label, value, icon }) => (
-  <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm min-w-0">
+const StatCard: React.FC<{ label: string; value: number; icon: React.ReactNode; onClick?: () => void }> = ({ label, value, icon, onClick }) => {
+  const content = <>
     <div className="flex items-center justify-between gap-2 text-[var(--color-muted)]">
       <span className="text-xs sm:text-sm font-semibold">{label}</span>
       {icon}
     </div>
     <p className="mt-2 text-2xl sm:text-3xl font-extrabold tabular-nums text-[var(--color-text)]">{value.toLocaleString()}</p>
-  </div>
-);
+    {onClick && <p className="mt-1 text-[11px] font-semibold text-primary">Click to view details</p>}
+  </>;
+  return onClick ? <button type="button" onClick={onClick} className="w-full text-left rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm min-w-0 hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary">{content}</button> : <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm min-w-0">{content}</div>;
+};
 
 export const AdminDashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -38,6 +40,10 @@ export const AdminDashboardPage: React.FC = () => {
   const [detailRows, setDetailRows] = useState<{ classes: any[]; students: any[]; attendance: any[]; performance: any[] } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [globalCategory, setGlobalCategory] = useState<'classes' | 'students' | 'attendance' | 'performance' | null>(null);
+  const [globalRows, setGlobalRows] = useState<any[]>([]);
+  const [globalLoading, setGlobalLoading] = useState(false);
+  const [globalError, setGlobalError] = useState<string | null>(null);
 
   const loadOverview = async () => {
     if (!supabase) return;
@@ -82,6 +88,25 @@ export const AdminDashboardPage: React.FC = () => {
     setDetailLoading(false);
   };
 
+  const openGlobalRecords = async (category: 'classes' | 'students' | 'attendance' | 'performance') => {
+    if (!supabase || accounts.length === 0) return;
+    setGlobalCategory(category);
+    setGlobalRows([]);
+    setGlobalError(null);
+    setGlobalLoading(true);
+    const accountIds = accounts.map((account) => account.id);
+    const config = {
+      classes: { table: 'classes', columns: 'id,name,user_id,created_at', order: 'created_at' },
+      students: { table: 'students', columns: 'id,name,roll_no,class_id,user_id', order: 'name' },
+      attendance: { table: 'attendance_records', columns: 'student_id,attendance_date,status,user_id', order: 'attendance_date' },
+      performance: { table: 'student_daily_performance', columns: 'student_id,record_date,attendance_status,sabaq_listened,sabaq_lines,sabqi_listened,sabqi_lines,manzil_listened,manzil_lines,user_id', order: 'record_date' },
+    }[category];
+    const { data, error: queryError } = await supabase.from(config.table).select(config.columns).in('user_id', accountIds).order(config.order, { ascending: false });
+    if (queryError) setGlobalError(queryError.message);
+    else setGlobalRows(data || []);
+    setGlobalLoading(false);
+  };
+
   const detailTabs = [
     { key: 'report', label: 'View Report' },
     { key: 'classes', label: 'Classes' },
@@ -118,12 +143,12 @@ export const AdminDashboardPage: React.FC = () => {
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Registered Users" value={totals.accounts} icon={<Users className="w-5 h-5" />} />
         <StatCard label="Active Users (30 days)" value={totals.active} icon={<Users className="w-5 h-5" />} />
-        <StatCard label="Total Classes" value={totals.classes} icon={<GraduationCap className="w-5 h-5" />} />
-        <StatCard label="Total Students" value={totals.students} icon={<Users className="w-5 h-5" />} />
-        <StatCard label="Attendance Records" value={totals.attendance} icon={<ClipboardCheck className="w-5 h-5" />} />
+        <StatCard label="Total Classes" value={totals.classes} icon={<GraduationCap className="w-5 h-5" />} onClick={() => void openGlobalRecords("classes")} />
+        <StatCard label="Total Students" value={totals.students} icon={<Users className="w-5 h-5" />} onClick={() => void openGlobalRecords("students")} />
+        <StatCard label="Attendance Records" value={totals.attendance} icon={<ClipboardCheck className="w-5 h-5" />} onClick={() => void openGlobalRecords("attendance")} />
       </section>
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <StatCard label="Daily Performance Records" value={totals.performance} icon={<BookOpenCheck className="w-5 h-5" />} />
+        <StatCard label="Daily Performance Records" value={totals.performance} icon={<BookOpenCheck className="w-5 h-5" />} onClick={() => void openGlobalRecords("performance")} />
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
           <p className="text-xs sm:text-sm font-semibold text-[var(--color-muted)]">Access policy</p>
           <p className="mt-2 text-sm font-bold text-[var(--color-text)]">Only database-verified Admin accounts can access this dashboard.</p>
@@ -178,6 +203,7 @@ export const AdminDashboardPage: React.FC = () => {
           {detailLoading ? <div className="p-5 text-sm text-[var(--color-muted)]">Loading account records…</div> :
             detailError ? <div role="alert" className="p-4 text-sm text-red-600">{detailError}</div> :
             !detailRows ? <div className="p-4 text-sm text-[var(--color-muted)]">Select a record category.</div> :
+            <>
             {detailTab === 'report' && (
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -206,6 +232,7 @@ export const AdminDashboardPage: React.FC = () => {
               {detailTab === 'attendance' && <table className="w-full min-w-[520px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Date</th><th className="p-3">Student ID</th><th className="p-3">Status</th></tr></thead><tbody>{detailRows.attendance.map((row, i) => <tr key={`${row.student_id}-${row.attendance_date}-${i}`} className="border-t border-[var(--color-border)]"><td className="p-3">{row.attendance_date}</td><td className="p-3 font-mono text-xs">{row.student_id}</td><td className="p-3 capitalize font-semibold">{row.status}</td></tr>)}</tbody></table>}
               {detailTab === 'performance' && <table className="w-full min-w-[760px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Date</th><th className="p-3">Student ID</th><th className="p-3">Attendance</th><th className="p-3">Sabaq</th><th className="p-3">Sabqi</th><th className="p-3">Manzil</th></tr></thead><tbody>{detailRows.performance.map((row, i) => <tr key={`${row.student_id}-${row.record_date}-${i}`} className="border-t border-[var(--color-border)]"><td className="p-3">{row.record_date}</td><td className="p-3 font-mono text-xs">{row.student_id}</td><td className="p-3 capitalize">{row.attendance_status}</td><td className="p-3">{row.sabaq_listened ? `Yes · ${row.sabaq_lines} lines` : 'No'}</td><td className="p-3">{row.sabqi_listened ? `Yes · ${row.sabqi_lines} lines` : 'No'}</td><td className="p-3">{row.manzil_listened ? `Yes · ${row.manzil_lines} lines` : 'No'}</td></tr>)}</tbody></table>}
             </div>
+            </>
           }
         </section>
       )}
