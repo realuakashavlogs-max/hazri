@@ -36,7 +36,6 @@ export const AdminDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<AdminAccount | null>(null);
-  const [detailTab, setDetailTab] = useState<'report' | 'classes' | 'students' | 'attendance' | 'performance'>('report');
   const [detailRows, setDetailRows] = useState<{ classes: any[]; students: any[]; attendance: any[]; performance: any[] } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -64,7 +63,6 @@ export const AdminDashboardPage: React.FC = () => {
   const loadAccountDetails = async (account: AdminAccount) => {
     if (!supabase) return;
     setSelectedAccount(account);
-    setDetailTab('classes');
     setDetailRows(null);
     setDetailError(null);
     setDetailLoading(true);
@@ -146,13 +144,7 @@ export const AdminDashboardPage: React.FC = () => {
     setGlobalLoading(false);
   };
 
-  const detailTabs = [
-    { key: 'report', label: 'View Report' },
-    { key: 'classes', label: 'Classes' },
-    { key: 'students', label: 'Students' },
-    { key: 'attendance', label: 'Attendance records' },
-    { key: 'performance', label: 'Performance records' },
-  ] as const;
+
 
   const totals = useMemo(() => accounts.reduce((sum, account) => ({
     accounts: sum.accounts + 1,
@@ -295,7 +287,7 @@ export const AdminDashboardPage: React.FC = () => {
                       <div><p className="text-[var(--color-muted)]">Attendance rows</p><p className="font-extrabold text-xl">{detailRows.attendance.length}</p></div>
                       <div><p className="text-[var(--color-muted)]">Performance rows</p><p className="font-extrabold text-xl">{detailRows.performance.length}</p></div>
                     </div>
-                    <p className="mt-3 text-xs text-[var(--color-muted)]">Use the Classes, Students, Attendance records and Performance records tabs to inspect the account's full records.</p>
+                    <p className="mt-3 text-xs text-[var(--color-muted)]">تمام ریکارڈز نیچے الگ الگ حصوں میں دکھائے گئے ہیں۔</p>
                   </div>
                 )}
               </div>
