@@ -63,8 +63,8 @@ export const AdminDashboardPage: React.FC = () => {
     const [classesResult, studentsResult, attendanceResult, performanceResult] = await Promise.all([
       supabase.from('classes').select('id,name').eq('user_id', account.id).order('created_at', { ascending: false }),
       supabase.from('students').select('id,name,roll_no,class_id').eq('user_id', account.id).order('name'),
-      supabase.from('attendance_records').select('student_id,attendance_date,status').eq('user_id', account.id).order('attendance_date', { ascending: false }).limit(100),
-      supabase.from('student_daily_performance').select('student_id,record_date,attendance_status,sabaq_listened,sabaq_lines,sabqi_listened,sabqi_lines,manzil_listened,manzil_lines').eq('user_id', account.id).order('record_date', { ascending: false }).limit(100),
+      supabase.from('attendance_records').select('student_id,attendance_date,status').eq('user_id', account.id).order('attendance_date', { ascending: false }),
+      supabase.from('student_daily_performance').select('student_id,record_date,attendance_status,sabaq_listened,sabaq_lines,sabqi_listened,sabqi_lines,manzil_listened,manzil_lines').eq('user_id', account.id).order('record_date', { ascending: false }),
     ]);
     const firstError = classesResult.error || studentsResult.error || attendanceResult.error || performanceResult.error;
     if (firstError) {
@@ -83,8 +83,8 @@ export const AdminDashboardPage: React.FC = () => {
   const detailTabs = [
     { key: 'classes', label: 'Classes' },
     { key: 'students', label: 'Students' },
-    { key: 'attendance', label: 'Attendance (latest 100)' },
-    { key: 'performance', label: 'Performance (latest 100)' },
+    { key: 'attendance', label: 'Attendance records' },
+    { key: 'performance', label: 'Performance records' },
   ] as const;
 
   const totals = useMemo(() => accounts.reduce((sum, account) => ({
