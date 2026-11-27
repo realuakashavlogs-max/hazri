@@ -11,6 +11,8 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -28,13 +30,13 @@ jobs:
         run: npm run build
 
       - name: Deploy to Cloudflare Workers
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
           accountId: 3b36b2acf6fe41fe8854cb48200a437d
           command: deploy --config wrangler.jsonc
 
       - name: Explain skipped deployment
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN == '' }}
+        if: ${{ env.CLOUDFLARE_API_TOKEN == '' }}
         run: echo "Build passed. Cloudflare deployment was skipped because CLOUDFLARE_API_TOKEN is not configured in GitHub repository secrets."
