@@ -85,10 +85,11 @@ export const AdminDashboardPage: React.FC = () => {
         const statusRows = (statuses ?? []) as unknown as Array<{ id: string; label_en: string | null; label_ur: string | null }>;
         const statusLabels = new Map(statusRows.map((status) => [status.id, status.label_ur || status.label_en || status.id]));
         const attendanceRows = (attendanceResult.data ?? []) as unknown as Array<Record<string, any>>;
+        const studentNames = new Map((studentsResult.data ?? []).map((student: any) => [student.id, student.name]));
         setDetailRows({
           classes: classesResult.data || [],
           students: studentsResult.data || [],
-          attendance: attendanceRows.map(({ status_id, ...row }) => ({ ...row, attendance_status: statusLabels.get(status_id) || status_id })),
+          attendance: attendanceRows.map(({ status_id, ...row }) => ({ ...row, student_name: studentNames.get(row.student_id) || 'نام دستیاب نہیں', attendance_status: statusLabels.get(status_id) || status_id })),
           performance: performanceResult.data || [],
         });
       }
@@ -120,7 +121,13 @@ export const AdminDashboardPage: React.FC = () => {
         const statusRows = (statuses ?? []) as unknown as Array<{ id: string; label_en: string | null; label_ur: string | null }>;
         const statusLabels = new Map(statusRows.map((status) => [status.id, status.label_ur || status.label_en || status.id]));
         const attendanceRows = (data ?? []) as unknown as Array<Record<string, any>>;
-        setGlobalRows(attendanceRows.map(({ status_id, ...row }) => ({ ...row, attendance_status: statusLabels.get(status_id) || status_id })));
+        const { data: studentRows, error: studentError } = await supabase.from('students').select('id,name,user_id').in('user_id', accountIds);
+        if (studentError) {
+          setGlobalError(studentError.message);
+        } else {
+          const studentNames = new Map((studentRows ?? []).map((student: any) => [student.id, student.name]));
+          setGlobalRows(attendanceRows.map(({ status_id, ...row }) => ({ ...row, student_name: studentNames.get(row.student_id) || 'نام دستیاب نہیں', attendance_status: statusLabels.get(status_id) || status_id })));
+        }
       }
     } else {
       setGlobalRows(data || []);
@@ -278,7 +285,7 @@ export const AdminDashboardPage: React.FC = () => {
             <div className="overflow-x-auto">
               {detailTab === 'classes' && <table className="w-full text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Class</th><th className="p-3">Students</th><th className="p-3">ID</th></tr></thead><tbody>{detailRows.classes.map((row) => <tr key={row.id} className="border-t border-[var(--color-border)]"><td className="p-3 font-semibold">{row.name}</td><td className="p-3 tabular-nums">{detailRows.students.filter((student) => student.class_id === row.id).length}</td><td className="p-3 font-mono text-xs">{row.id}</td></tr>)}</tbody></table>}
               {detailTab === 'students' && <table className="w-full min-w-[520px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Student</th><th className="p-3">Roll No.</th><th className="p-3">Class ID</th></tr></thead><tbody>{detailRows.students.map((row) => <tr key={row.id} className="border-t border-[var(--color-border)]"><td className="p-3 font-semibold">{row.name}</td><td className="p-3">{row.roll_no || '—'}</td><td className="p-3 font-mono text-xs">{row.class_id}</td></tr>)}</tbody></table>}
-              {detailTab === 'attendance' && <table className="w-full min-w-[520px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Date</th><th className="p-3">Student ID</th><th className="p-3">Status</th></tr></thead><tbody>{detailRows.attendance.map((row, i) => <tr key={`${row.student_id}-${row.attendance_date}-${i}`} className="border-t border-[var(--color-border)]"><td className="p-3">{row.attendance_date}</td><td className="p-3 font-mono text-xs">{row.student_id}</td><td className="p-3 capitalize font-semibold">{row.attendance_status}</td></tr>)}</tbody></table>}
+              {detailTab === 'attendance' && <table className="w-full min-w-[520px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Date</th><th className="p-3">Student Name</th><th className="p-3">Attendance</th></tr></thead><tbody>{detailRows.attendance.map((row, i) => <tr key={`${row.student_id}-${row.attendance_date}-${i}`} className="border-t border-[var(--color-border)]"><td className="p-3">{row.attendance_date}</td><td className="p-3 font-semibold">{row.student_name}</td><td className="p-3 font-semibold">{row.attendance_status}</td></tr>)}</tbody></table>}
               {detailTab === 'performance' && <table className="w-full min-w-[760px] text-sm"><thead><tr className="text-left text-[var(--color-muted)]"><th className="p-3">Date</th><th className="p-3">Student ID</th><th className="p-3">Attendance</th><th className="p-3">Sabaq</th><th className="p-3">Sabqi</th><th className="p-3">Manzil</th></tr></thead><tbody>{detailRows.performance.map((row, i) => <tr key={`${row.student_id}-${row.record_date}-${i}`} className="border-t border-[var(--color-border)]"><td className="p-3">{row.record_date}</td><td className="p-3 font-mono text-xs">{row.student_id}</td><td className="p-3 capitalize">{row.attendance_status}</td><td className="p-3">{row.sabaq_listened ? `Yes · ${row.sabaq_lines} lines` : 'No'}</td><td className="p-3">{row.sabqi_listened ? `Yes · ${row.sabqi_lines} lines` : 'No'}</td><td className="p-3">{row.manzil_listened ? `Yes · ${row.manzil_lines} lines` : 'No'}</td></tr>)}</tbody></table>}
             </div>
             </>
