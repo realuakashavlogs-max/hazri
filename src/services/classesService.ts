@@ -13,7 +13,7 @@ export const classesService = {
 
     const { data, error } = await supabase
       .from('classes')
-      .select('id, user_id, name, created_at')
+      .select('id, user_id, name, class_type, session_time, created_at')
       .eq('user_id', userId)
       .order('name', { ascending: true });
 
@@ -21,7 +21,7 @@ export const classesService = {
     return data || [];
   },
 
-  async createClass(params: { name: string }): Promise<ClassItem> {
+  async createClass(params: { name: string; class_type: 'hifz' | 'nazira' | 'school_time' | 'other'; session_time?: 'morning' | 'evening' | null }): Promise<ClassItem> {
     ensureConfigured();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -33,6 +33,8 @@ export const classesService = {
       .insert({
         user_id: user.id,
         name: params.name,
+        class_type: params.class_type,
+        session_time: params.session_time ?? null,
       })
       .select('id, user_id, name, created_at')
       .single();
@@ -41,12 +43,12 @@ export const classesService = {
     return data;
   },
 
-  async updateClass(id: string, updates: { name: string }): Promise<ClassItem> {
+  async updateClass(id: string, updates: { name: string; class_type: 'hifz' | 'nazira' | 'school_time' | 'other'; session_time?: 'morning' | 'evening' | null }): Promise<ClassItem> {
     ensureConfigured();
 
     const { data, error } = await supabase
       .from('classes')
-      .update({ name: updates.name })
+      .update({ name: updates.name, class_type: updates.class_type, session_time: updates.session_time ?? null })
       .eq('id', id)
       .select('id, user_id, name, created_at')
       .single();
