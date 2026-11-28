@@ -44,9 +44,13 @@ export interface SimpleFormState {
   sabqi_listened: boolean;
   sabqi_lines: string;
   sabqi_para: string;
+  sabqi_mistakes: string;
+  sabqi_atak_count: string;
   manzil_listened: boolean;
   manzil_lines: string;
   manzil_para: string;
+  manzil_mistakes: string;
+  manzil_atak_count: string;
 }
 
 const DEFAULT_FORM_STATE: SimpleFormState = {
@@ -57,9 +61,13 @@ const DEFAULT_FORM_STATE: SimpleFormState = {
   sabqi_listened: false,
   sabqi_lines: '0',
   sabqi_para: '',
+  sabqi_mistakes: '0',
+  sabqi_atak_count: '0',
   manzil_listened: false,
   manzil_lines: '0',
   manzil_para: '',
+  manzil_mistakes: '0',
+  manzil_atak_count: '0',
 };
 
 export function parseNonNegativeWholeLines(
@@ -90,9 +98,16 @@ export function buildSimplePerformancePayload(params: {
   const sabaqPara = form.sabaq_listened && form.sabaq_para ? Number(form.sabaq_para) : null;
   const sabqiPara = form.sabqi_listened && form.sabqi_para ? Number(form.sabqi_para) : null;
   const manzilPara = form.manzil_listened && form.manzil_para ? Number(form.manzil_para) : null;
+  const sabqiMistakes = form.sabqi_listened ? Number(form.sabqi_mistakes) : 0;
+  const sabqiAtakCount = form.sabqi_listened ? Number(form.sabqi_atak_count) : 0;
+  const manzilMistakes = form.manzil_listened ? Number(form.manzil_mistakes) : 0;
+  const manzilAtakCount = form.manzil_listened ? Number(form.manzil_atak_count) : 0;
   if (form.sabaq_listened && (!sabaqPara || sabaqPara < 1 || sabaqPara > 30)) invalidFields.push('sabaq');
   if (form.sabqi_listened && (!sabqiPara || sabqiPara < 1 || sabqiPara > 30)) invalidFields.push('sabqi');
   if (form.manzil_listened && (!manzilPara || manzilPara < 1 || manzilPara > 30)) invalidFields.push('manzil');
+  for (const [lesson, value] of [['sabqi', sabqiMistakes], ['sabqi', sabqiAtakCount], ['manzil', manzilMistakes], ['manzil', manzilAtakCount]] as const) {
+    if (!Number.isSafeInteger(value) || value < 0 || value > 99) invalidFields.push(lesson);
+  }
 
   const sabaqLines = parseNonNegativeWholeLines(form.sabaq_lines, form.sabaq_listened);
   if (sabaqLines === null) invalidFields.push('sabaq');
@@ -132,6 +147,8 @@ export function buildSimplePerformancePayload(params: {
       sabqi_listened: form.sabqi_listened,
       sabqi_lines: sabqiLines,
       sabqi_para: sabqiPara,
+      sabqi_mistakes: sabqiMistakes,
+      sabqi_atak_count: sabqiAtakCount,
       sabqi_details: existingRecord?.sabqi_details ?? null,
       sabqi_start_page: existingRecord?.sabqi_start_page ?? null,
       sabqi_end_page: existingRecord?.sabqi_end_page ?? null,
@@ -143,6 +160,8 @@ export function buildSimplePerformancePayload(params: {
       manzil_lines: manzilLines,
       manzil_details: existingRecord?.manzil_details ?? null,
       manzil_para: manzilPara,
+      manzil_mistakes: manzilMistakes,
+      manzil_atak_count: manzilAtakCount,
       manzil_start_page: existingRecord?.manzil_start_page ?? null,
       manzil_end_page: existingRecord?.manzil_end_page ?? null,
       manzil_completed: form.manzil_listened,
@@ -200,9 +219,13 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
         sabqi_listened: record.sabqi_listened,
         sabqi_lines: record.sabqi_listened ? String(Math.max(0, record.sabqi_lines ?? 0)) : '0',
         sabqi_para: record.sabqi_para ? String(record.sabqi_para) : '',
+        sabqi_mistakes: String(record.sabqi_mistakes ?? 0),
+        sabqi_atak_count: String(record.sabqi_atak_count ?? 0),
         manzil_listened: record.manzil_listened,
         manzil_lines: record.manzil_listened ? String(Math.max(0, record.manzil_lines ?? 0)) : '0',
         manzil_para: record.manzil_para ? String(record.manzil_para) : '',
+        manzil_mistakes: String(record.manzil_mistakes ?? 0),
+        manzil_atak_count: String(record.manzil_atak_count ?? 0),
       });
     } else {
       setForm({
@@ -232,6 +255,8 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
           sabqi_listened: listened,
           sabqi_lines: listened ? prev.sabqi_lines : '0',
           sabqi_para: listened ? prev.sabqi_para : '',
+          sabqi_mistakes: listened ? prev.sabqi_mistakes : '0',
+          sabqi_atak_count: listened ? prev.sabqi_atak_count : '0',
         };
       }
       return {
@@ -239,6 +264,8 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
         manzil_listened: listened,
         manzil_lines: listened ? prev.manzil_lines : '0',
         manzil_para: listened ? prev.manzil_para : '',
+        manzil_mistakes: listened ? prev.manzil_mistakes : '0',
+        manzil_atak_count: listened ? prev.manzil_atak_count : '0',
       };
     });
   };
@@ -535,6 +562,42 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
                     <option key={index + 1} value={String(index + 1)}>پارہ {index + 1}</option>
                   ))}
                 </select>
+              </div>
+            )}
+
+
+            {section.listened && section.key !== 'sabaq' && (
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="space-y-1.5">
+                  <label htmlFor={`${section.key}-mistakes`} className="block text-sm font-bold text-[var(--color-text)]">غلطیاں کتنی ہوئیں؟</label>
+                  <select
+                    id={`${section.key}-mistakes`}
+                    value={section.key === 'sabqi' ? form.sabqi_mistakes : form.manzil_mistakes}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSaveNotice(null);
+                      setForm((prev) => section.key === 'sabqi' ? { ...prev, sabqi_mistakes: value } : { ...prev, manzil_mistakes: value });
+                    }}
+                    className="w-full min-h-[48px] rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-sm font-semibold text-[var(--color-text)]"
+                  >
+                    {Array.from({ length: 100 }, (_, index) => <option key={index} value={String(index)}>{index}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor={`${section.key}-atak`} className="block text-sm font-bold text-[var(--color-text)]">اٹکنے کی تعداد</label>
+                  <select
+                    id={`${section.key}-atak`}
+                    value={section.key === 'sabqi' ? form.sabqi_atak_count : form.manzil_atak_count}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSaveNotice(null);
+                      setForm((prev) => section.key === 'sabqi' ? { ...prev, sabqi_atak_count: value } : { ...prev, manzil_atak_count: value });
+                    }}
+                    className="w-full min-h-[48px] rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-sm font-semibold text-[var(--color-text)]"
+                  >
+                    {Array.from({ length: 100 }, (_, index) => <option key={index} value={String(index)}>{index}</option>)}
+                  </select>
+                </div>
               </div>
             )}
 
