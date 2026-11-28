@@ -115,10 +115,15 @@ export type ParentMessage = {
   sent_at: string | null;
 };
 
+export type ClassType = 'hifz' | 'nazira' | 'school_time' | 'other';
+export type ClassSession = 'morning' | 'evening';
+
 export type ClassItem = {
   id: string;
   user_id: string;
   name: string;
+  class_type: ClassType;
+  session_time: ClassSession | null;
   created_at: string;
 };
 
@@ -183,6 +188,7 @@ export type StudentDailyPerformance = {
   manzil_listened: boolean;
   manzil_lines: number;
   manzil_details: string | null;
+  manzil_para: number | null;
   manzil_start_page: number | null;
   manzil_end_page: number | null;
   manzil_completed: boolean;
