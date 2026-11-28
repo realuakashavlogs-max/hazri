@@ -14,14 +14,14 @@ export function useClasses() {
   });
 
   const createClassMutation = useMutation({
-    mutationFn: (data: { name: string }) => classesService.createClass(data),
+    mutationFn: (data: { name: string; class_type: 'hifz' | 'nazira' | 'school_time' | 'other'; session_time?: 'morning' | 'evening' | null }) => classesService.createClass(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['classes', userId] });
     },
   });
 
   const updateClassMutation = useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: { name: string } }) =>
+    mutationFn: ({ id, updates }: { id: string; updates: { name: string; class_type: 'hifz' | 'nazira' | 'school_time' | 'other'; session_time?: 'morning' | 'evening' | null } }) =>
       classesService.updateClass(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['classes', userId] });
