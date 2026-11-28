@@ -43,11 +43,13 @@ export interface SimpleFormState {
   sabaq_para: string;
   sabqi_listened: boolean;
   sabqi_lines: string;
+  sabqi_details: string;
   sabqi_para: string;
   sabqi_mistakes: string;
   sabqi_atak_count: string;
   manzil_listened: boolean;
   manzil_lines: string;
+  manzil_details: string;
   manzil_para: string;
   manzil_mistakes: string;
   manzil_atak_count: string;
@@ -60,11 +62,13 @@ const DEFAULT_FORM_STATE: SimpleFormState = {
   sabaq_para: '',
   sabqi_listened: false,
   sabqi_lines: '0',
+  sabqi_details: '',
   sabqi_para: '',
   sabqi_mistakes: '0',
   sabqi_atak_count: '0',
   manzil_listened: false,
   manzil_lines: '0',
+  manzil_details: '',
   manzil_para: '',
   manzil_mistakes: '0',
   manzil_atak_count: '0',
@@ -112,13 +116,11 @@ export function buildSimplePerformancePayload(params: {
   const sabaqLines = parseNonNegativeWholeLines(form.sabaq_lines, form.sabaq_listened);
   if (sabaqLines === null) invalidFields.push('sabaq');
 
-  const sabqiLines = parseNonNegativeWholeLines(form.sabqi_lines, form.sabqi_listened);
-  if (sabqiLines === null) invalidFields.push('sabqi');
+  // Sabqi and Manzil are free-text Urdu entries; keep legacy numeric columns at 0.
+  const sabqiLines = 0;
+  const manzilLines = 0;
 
-  const manzilLines = parseNonNegativeWholeLines(form.manzil_lines, form.manzil_listened);
-  if (manzilLines === null) invalidFields.push('manzil');
-
-  if (invalidFields.length > 0 || sabaqLines === null || sabqiLines === null || manzilLines === null) {
+  if (invalidFields.length > 0 || sabaqLines === null) {
     return { payload: null, invalidFields };
   }
 
@@ -149,7 +151,7 @@ export function buildSimplePerformancePayload(params: {
       sabqi_para: sabqiPara,
       sabqi_mistakes: sabqiMistakes,
       sabqi_atak_count: sabqiAtakCount,
-      sabqi_details: existingRecord?.sabqi_details ?? null,
+      sabqi_details: form.sabqi_listened ? (form.sabqi_details.trim() || null) : null,
       sabqi_start_page: existingRecord?.sabqi_start_page ?? null,
       sabqi_end_page: existingRecord?.sabqi_end_page ?? null,
       sabqi_completed: form.sabqi_listened,
@@ -158,7 +160,7 @@ export function buildSimplePerformancePayload(params: {
       // Manzil
       manzil_listened: form.manzil_listened,
       manzil_lines: manzilLines,
-      manzil_details: existingRecord?.manzil_details ?? null,
+      manzil_details: form.manzil_listened ? (form.manzil_details.trim() || null) : null,
       manzil_para: manzilPara,
       manzil_mistakes: manzilMistakes,
       manzil_atak_count: manzilAtakCount,
@@ -217,12 +219,14 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
         sabaq_lines: record.sabaq_listened ? String(Math.max(0, record.sabaq_lines ?? 0)) : '0',
         sabaq_para: record.sabaq_para ? String(record.sabaq_para) : '',
         sabqi_listened: record.sabqi_listened,
-        sabqi_lines: record.sabqi_listened ? String(Math.max(0, record.sabqi_lines ?? 0)) : '0',
+        sabqi_lines: '0',
+        sabqi_details: record.sabqi_details ?? '',
         sabqi_para: record.sabqi_para ? String(record.sabqi_para) : '',
         sabqi_mistakes: String(record.sabqi_mistakes ?? 0),
         sabqi_atak_count: String(record.sabqi_atak_count ?? 0),
         manzil_listened: record.manzil_listened,
-        manzil_lines: record.manzil_listened ? String(Math.max(0, record.manzil_lines ?? 0)) : '0',
+        manzil_lines: '0',
+        manzil_details: record.manzil_details ?? '',
         manzil_para: record.manzil_para ? String(record.manzil_para) : '',
         manzil_mistakes: String(record.manzil_mistakes ?? 0),
         manzil_atak_count: String(record.manzil_atak_count ?? 0),
@@ -253,7 +257,8 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
         return {
           ...prev,
           sabqi_listened: listened,
-          sabqi_lines: listened ? prev.sabqi_lines : '0',
+          sabqi_lines: '0',
+          sabqi_details: listened ? prev.sabqi_details : '',
           sabqi_para: listened ? prev.sabqi_para : '',
           sabqi_mistakes: listened ? prev.sabqi_mistakes : '0',
           sabqi_atak_count: listened ? prev.sabqi_atak_count : '0',
@@ -262,7 +267,8 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
       return {
         ...prev,
         manzil_listened: listened,
-        manzil_lines: listened ? prev.manzil_lines : '0',
+        manzil_lines: '0',
+        manzil_details: listened ? prev.manzil_details : '',
         manzil_para: listened ? prev.manzil_para : '',
         manzil_mistakes: listened ? prev.manzil_mistakes : '0',
         manzil_atak_count: listened ? prev.manzil_atak_count : '0',
@@ -277,8 +283,8 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
 
     setForm((prev) => {
       if (lesson === 'sabaq') return { ...prev, sabaq_lines: raw };
-      if (lesson === 'sabqi') return { ...prev, sabqi_lines: raw };
-      return { ...prev, manzil_lines: raw };
+      if (lesson === 'sabqi') return { ...prev, sabqi_details: raw };
+      return { ...prev, manzil_details: raw };
     });
   };
 
@@ -602,60 +608,38 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
             )}
 
             <div className="pt-1 space-y-1.5">
-              <label
-                htmlFor={inputId}
-                className="block text-sm font-bold text-[var(--color-text)]"
-              >
+              <label htmlFor={inputId} className="block text-sm font-bold text-[var(--color-text)]">
                 {t(section.key === 'sabaq' ? 'performance.how_much_recited' : 'performance.how_much_recited_count')}
               </label>
-
-              <div className="flex items-center gap-2">
-                <input
-                  id={inputId}
-                  type="number"
-                  min={0}
-                  step={1}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  disabled={!section.listened}
-                  value={section.listened ? section.linesValue : '0'}
-                  onKeyDown={preventInvalidNumberKeys}
-                  onFocus={(e) => {
-                    if (section.listened) {
-                      e.currentTarget.select();
-                    }
+              {section.key === 'sabaq' ? (
+                <div className="flex items-center gap-2">
+                  <input id={inputId} type="number" min={0} step={1} inputMode="numeric" pattern="[0-9]*"
+                    disabled={!section.listened} value={section.listened ? section.linesValue : '0'}
+                    onKeyDown={preventInvalidNumberKeys}
+                    onFocus={(e) => { if (section.listened) e.currentTarget.select(); }}
+                    onChange={(e) => handleLinesChange(section.key, e.target.value)}
+                    placeholder={t('performance.lines_placeholder')} aria-label={`${section.title} - ${t('performance.lines_count')}`}
+                    aria-invalid={hasError}
+                    className={`w-full min-h-[48px] rounded-xl border px-3.5 py-2.5 text-base font-mono font-bold focus:outline-none focus:ring-2 focus:ring-primary ${!section.listened ? 'bg-slate-100 dark:bg-slate-800/60 text-[var(--color-muted)] border-[var(--color-border)] cursor-not-allowed' : hasError ? 'bg-[var(--color-bg)] text-[var(--color-text)] border-red-500 ring-1 ring-red-500' : 'bg-[var(--color-bg)] text-[var(--color-text)] border-[var(--color-border)]'}`}
+                  />
+                  <span className="shrink-0 text-xs font-bold text-[var(--color-muted)] px-2">{t('performance.lines_unit')}</span>
+                </div>
+              ) : (
+                <textarea id={inputId} rows={2} disabled={!section.listened} dir="rtl" lang="ur"
+                  value={section.listened ? (section.key === 'sabqi' ? form.sabqi_details : form.manzil_details) : ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSaveNotice(null); setSaveError(null);
+                    setForm((prev) => section.key === 'sabqi' ? { ...prev, sabqi_details: value } : { ...prev, manzil_details: value });
                   }}
-                  onChange={(e) => handleLinesChange(section.key, e.target.value)}
-                  placeholder={t(section.key === 'sabaq' ? 'performance.lines_placeholder' : 'performance.count_placeholder')}
-                  aria-label={`${section.title} - ${t(section.key === 'sabaq' ? 'performance.lines_count' : 'performance.how_much_recited_count')}`}
-                  aria-invalid={hasError}
-                  className={`w-full min-h-[48px] rounded-xl border px-3.5 py-2.5 text-base font-mono font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
-                    !section.listened
-                      ? 'bg-slate-100 dark:bg-slate-800/60 text-[var(--color-muted)] border-[var(--color-border)] cursor-not-allowed'
-                      : hasError
-                        ? 'bg-[var(--color-bg)] text-[var(--color-text)] border-red-500 ring-1 ring-red-500'
-                        : 'bg-[var(--color-bg)] text-[var(--color-text)] border-[var(--color-border)]'
-                  }`}
+                  placeholder="مثلاً: تین پانچ سنائی ہے، آدھا پارہ"
+                  aria-label={`${section.title} - کتنی سنائی ہے؟`}
+                  className="w-full min-h-[64px] rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-2.5 text-base font-semibold text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 />
-                {section.key === 'sabaq' && (
-                  <span className="shrink-0 text-xs font-bold text-[var(--color-muted)] px-2">
-                    {t('performance.lines_unit')}
-                  </span>
-                )}
-              </div>
-
-              {!section.listened && (
-                <p className="text-xs text-[var(--color-muted)]">
-                  {t('performance.lines_disabled_hint')}
-                </p>
               )}
-
-              {hasError && (
-                <p className="text-xs font-semibold text-red-600 dark:text-red-400">
-                  {t('performance.err_invalid_lines')}
-                </p>
-              )}
-            </div>
+              {!section.listened && <p className="text-xs text-[var(--color-muted)]">{t('performance.lines_disabled_hint')}</p>}
+              {hasError && section.key === 'sabaq' && <p className="text-xs font-semibold text-red-600 dark:text-red-400">{t('performance.err_invalid_lines')}</p>}
+            </div>      </div>
           </section>
         );
       })}
