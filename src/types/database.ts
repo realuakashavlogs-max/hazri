@@ -179,6 +179,8 @@ export type StudentDailyPerformance = {
   sabqi_listened: boolean;
   sabqi_lines: number;
   sabqi_para: number | null;
+  sabqi_mistakes: number;
+  sabqi_atak_count: number;
   sabqi_details: string | null;
   sabqi_start_page: number | null;
   sabqi_end_page: number | null;
@@ -190,6 +192,8 @@ export type StudentDailyPerformance = {
   manzil_lines: number;
   manzil_details: string | null;
   manzil_para: number | null;
+  manzil_mistakes: number;
+  manzil_atak_count: number;
   manzil_start_page: number | null;
   manzil_end_page: number | null;
   manzil_completed: boolean;
@@ -389,6 +393,8 @@ export type Database = {
           sabqi_listened?: boolean;
           sabqi_lines?: number;
           sabqi_para?: number | null;
+          sabqi_mistakes?: number;
+          sabqi_atak_count?: number;
           sabqi_details?: string | null;
           sabqi_start_page?: number | null;
           sabqi_end_page?: number | null;
@@ -398,6 +404,8 @@ export type Database = {
           manzil_lines?: number;
           manzil_details?: string | null;
           manzil_para?: number | null;
+          manzil_mistakes?: number;
+          manzil_atak_count?: number;
           manzil_start_page?: number | null;
           manzil_end_page?: number | null;
           manzil_completed?: boolean;
