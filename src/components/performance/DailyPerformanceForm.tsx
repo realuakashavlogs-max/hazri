@@ -47,12 +47,15 @@ export interface SimpleFormState {
   sabqi_para: string;
   sabqi_mistakes: string;
   sabqi_atak_count: string;
+  sabqi_grade: string;
   manzil_listened: boolean;
   manzil_lines: string;
   manzil_details: string;
   manzil_para: string;
   manzil_mistakes: string;
   manzil_atak_count: string;
+  manzil_grade: string;
+  teacher_signature: string;
 }
 
 const DEFAULT_FORM_STATE: SimpleFormState = {
@@ -66,12 +69,15 @@ const DEFAULT_FORM_STATE: SimpleFormState = {
   sabqi_para: '',
   sabqi_mistakes: '0',
   sabqi_atak_count: '0',
+  sabqi_grade: '',
   manzil_listened: false,
   manzil_lines: '0',
   manzil_details: '',
   manzil_para: '',
   manzil_mistakes: '0',
   manzil_atak_count: '0',
+  manzil_grade: '',
+  teacher_signature: '',
 };
 
 export function parseNonNegativeWholeLines(
@@ -151,6 +157,7 @@ export function buildSimplePerformancePayload(params: {
       sabqi_para: sabqiPara,
       sabqi_mistakes: sabqiMistakes,
       sabqi_atak_count: sabqiAtakCount,
+      sabqi_grade: form.sabqi_listened ? (form.sabqi_grade || null) : null,
       sabqi_details: form.sabqi_listened ? (form.sabqi_details.trim() || null) : null,
       sabqi_start_page: existingRecord?.sabqi_start_page ?? null,
       sabqi_end_page: existingRecord?.sabqi_end_page ?? null,
@@ -164,6 +171,7 @@ export function buildSimplePerformancePayload(params: {
       manzil_para: manzilPara,
       manzil_mistakes: manzilMistakes,
       manzil_atak_count: manzilAtakCount,
+      manzil_grade: form.manzil_listened ? (form.manzil_grade || null) : null,
       manzil_start_page: existingRecord?.manzil_start_page ?? null,
       manzil_end_page: existingRecord?.manzil_end_page ?? null,
       manzil_completed: form.manzil_listened,
@@ -178,6 +186,7 @@ export function buildSimplePerformancePayload(params: {
       daily_result: existingRecord?.daily_result ?? 'good',
       incomplete_reason: existingRecord?.incomplete_reason ?? null,
       teacher_remarks: existingRecord?.teacher_remarks ?? null,
+      teacher_signature: form.teacher_signature.trim() || null,
     },
   };
 }
@@ -224,12 +233,15 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
         sabqi_para: record.sabqi_para ? String(record.sabqi_para) : '',
         sabqi_mistakes: String(record.sabqi_mistakes ?? 0),
         sabqi_atak_count: String(record.sabqi_atak_count ?? 0),
+        sabqi_grade: record.sabqi_grade ?? '',
         manzil_listened: record.manzil_listened,
         manzil_lines: '0',
         manzil_details: record.manzil_details ?? '',
         manzil_para: record.manzil_para ? String(record.manzil_para) : '',
         manzil_mistakes: String(record.manzil_mistakes ?? 0),
         manzil_atak_count: String(record.manzil_atak_count ?? 0),
+        manzil_grade: record.manzil_grade ?? '',
+        teacher_signature: record.teacher_signature ?? '',
       });
     } else {
       setForm({
@@ -262,6 +274,7 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
           sabqi_para: listened ? prev.sabqi_para : '',
           sabqi_mistakes: listened ? prev.sabqi_mistakes : '0',
           sabqi_atak_count: listened ? prev.sabqi_atak_count : '0',
+          sabqi_grade: listened ? prev.sabqi_grade : '',
         };
       }
       return {
@@ -272,6 +285,7 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
         manzil_para: listened ? prev.manzil_para : '',
         manzil_mistakes: listened ? prev.manzil_mistakes : '0',
         manzil_atak_count: listened ? prev.manzil_atak_count : '0',
+        manzil_grade: listened ? prev.manzil_grade : '',
       };
     });
   };
@@ -573,6 +587,35 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
 
 
             {section.listened && section.key !== 'sabaq' && (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label htmlFor={`${section.key}-details`} className="block text-sm font-bold text-[var(--color-text)]">
+                    {section.key === 'sabqi' ? 'سبقی کی تفصیل (کون سا حصہ، کہاں سے کہاں تک، پوز وغیرہ)' : 'منزل کی تفصیل (کون سے پارے، کہاں سے کہاں تک)'}
+                  </label>
+                  <textarea id={`${section.key}-details`} rows={3} dir="rtl" lang="ur"
+                    value={section.key === 'sabqi' ? form.sabqi_details : form.manzil_details}
+                    onChange={(e) => handleLinesChange(section.key, e.target.value)}
+                    placeholder={section.key === 'sabqi' ? 'مثلاً: سبق ۵ سے ۸ تک، ۲ پوز ہوئے' : 'مثلاً: پارہ ۱ سے ۳ تک سنایا'}
+                    className="w-full min-h-[76px] rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-2.5 text-base font-semibold text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor={`${section.key}-grade`} className="block text-sm font-bold text-[var(--color-text)]">کارکردگی / گریڈ</label>
+                  <select id={`${section.key}-grade`} value={section.key === 'sabqi' ? form.sabqi_grade : form.manzil_grade}
+                    onChange={(e) => { const value = e.target.value; setSaveNotice(null); setForm((prev) => section.key === 'sabqi' ? { ...prev, sabqi_grade: value } : { ...prev, manzil_grade: value }); }}
+                    className="w-full min-h-[48px] rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-sm font-semibold text-[var(--color-text)]">
+                    <option value="">گریڈ منتخب کریں</option>
+                    <option value="excellent">Excellent — بہترین</option>
+                    <option value="very_good">Very Good — بہت اچھا</option>
+                    <option value="good">Good — اچھا</option>
+                    <option value="needs_improvement">Needs Improvement — مزید محنت کی ضرورت</option>
+                    <option value="not_satisfactory">Not Satisfactory — غیر تسلی بخش</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {section.listened && section.key !== 'sabaq' && (
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="space-y-1.5">
                   <label htmlFor={`${section.key}-mistakes`} className="block text-sm font-bold text-[var(--color-text)]">غلطیاں کتنی ہوئیں؟</label>
@@ -607,7 +650,7 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
               </div>
             )}
 
-            <div className="pt-1 space-y-1.5">
+            {section.key === 'sabaq' && <div className="pt-1 space-y-1.5">
               <label htmlFor={inputId} className="block text-sm font-bold text-[var(--color-text)]">
                 {t(section.key === 'sabaq' ? 'performance.how_much_recited' : 'performance.how_much_recited_count')}
               </label>
@@ -624,25 +667,21 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
                   />
                   <span className="shrink-0 text-xs font-bold text-[var(--color-muted)] px-2">{t('performance.lines_unit')}</span>
                 </div>
-              ) : (
-                <textarea id={inputId} rows={2} disabled={!section.listened} dir="rtl" lang="ur"
-                  value={section.listened ? (section.key === 'sabqi' ? form.sabqi_details : form.manzil_details) : ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setSaveNotice(null); setSaveError(null);
-                    setForm((prev) => section.key === 'sabqi' ? { ...prev, sabqi_details: value } : { ...prev, manzil_details: value });
-                  }}
-                  placeholder="مثلاً: تین پانچ سنائی ہے، آدھا پارہ"
-                  aria-label={`${section.title} - کتنی سنائی ہے؟`}
-                  className="w-full min-h-[64px] rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-2.5 text-base font-semibold text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-                />
-              )}
+              ) : null}
               {!section.listened && <p className="text-xs text-[var(--color-muted)]">{t('performance.lines_disabled_hint')}</p>}
               {hasError && section.key === 'sabaq' && <p className="text-xs font-semibold text-red-600 dark:text-red-400">{t('performance.err_invalid_lines')}</p>}
-            </div>
+            </div>}
           </section>
         );
       })}
+
+      <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 space-y-2 shadow-sm">
+        <label htmlFor="teacher-signature" className="block text-sm font-bold text-[var(--color-text)]">استاد کے دستخط / نام</label>
+        <input id="teacher-signature" type="text" dir="rtl" value={form.teacher_signature}
+          onChange={(e) => { setSaveNotice(null); setForm((prev) => ({ ...prev, teacher_signature: e.target.value })); }}
+          placeholder="اپنے دستخط یا نام درج کریں"
+          className="w-full min-h-[48px] rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-2.5 text-base font-semibold text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-primary" />
+      </section>
 
       {/* Save / Update Action */}
       <div className="sticky bottom-[calc(7rem+env(safe-area-inset-bottom))] sm:bottom-4 z-20 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur-md p-2.5 shadow-lg">
