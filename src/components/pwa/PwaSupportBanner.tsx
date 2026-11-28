@@ -46,10 +46,13 @@ export const PwaSupportBanner: React.FC = () => {
   } = useRegisterSW({
     onRegisteredSW(_swUrl, registration) {
       if (!registration) return;
-      // Periodically check for updated app bundles in long-lived PWA sessions
-      setInterval(() => {
-        registration.update().catch(() => {});
-      }, 60 * 60 * 1000);
+      // Check as soon as an existing installation opens, then periodically while it stays open.
+      registration.update().catch(() => {});
+      window.setInterval(() => {
+        if (document.visibilityState === 'visible' && navigator.onLine) {
+          registration.update().catch(() => {});
+        }
+      }, 15 * 60 * 1000);
     },
   });
 
