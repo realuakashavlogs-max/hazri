@@ -8,7 +8,7 @@ import { Modal } from '../../components/ui/Modal';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useNavigate } from 'react-router-dom';
-import type { ClassItem } from '../../types/database';
+import type { ClassItem, ClassType, ClassSession } from '../../types/database';
 import {
   Plus,
   Trash2,
@@ -38,16 +38,22 @@ export const ClassesPage: React.FC = () => {
   const [deleteConfirmClass, setDeleteConfirmClass] = useState<ClassItem | null>(null);
 
   const [formName, setFormName] = useState('');
+  const [formClassType, setFormClassType] = useState<ClassType>('hifz');
+  const [formSession, setFormSession] = useState<ClassSession>('morning');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleOpenAdd = () => {
     setFormName('');
+    setFormClassType('hifz');
+    setFormSession('morning');
     setIsAddModalOpen(true);
   };
 
   const handleOpenEdit = (cls: ClassItem) => {
     setEditingClass(cls);
     setFormName(cls.name);
+    setFormClassType(cls.class_type || 'other');
+    setFormSession(cls.session_time || 'morning');
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -61,6 +67,8 @@ export const ClassesPage: React.FC = () => {
           id: editingClass.id,
           updates: {
             name: formName.trim(),
+            class_type: formClassType,
+            session_time: formClassType === 'school_time' ? formSession : null,
           },
         });
         setEditingClass(null);
@@ -68,6 +76,8 @@ export const ClassesPage: React.FC = () => {
       } else {
         await createClass({
           name: formName.trim(),
+          class_type: formClassType,
+          session_time: formClassType === 'school_time' ? formSession : null,
         });
         setIsAddModalOpen(false);
         showToast('Class created!', 'success');
@@ -124,6 +134,16 @@ export const ClassesPage: React.FC = () => {
                       {cls.name}
                     </h2>
                   </div>
+                  <div className="mb-3 flex flex-wrap gap-1.5 text-xs font-bold">
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                      {cls.class_type === 'hifz' ? 'فل حفظ' : cls.class_type === 'nazira' ? 'ناظرہ' : cls.class_type === 'school_time' ? 'اسکول ٹائم' : 'عام کلاس'}
+                    </span>
+                    {cls.class_type === 'school_time' && (
+                      <span className="rounded-full bg-blue-50 px-2.5 py-1 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+                        {cls.session_time === 'morning' ? 'صبح / فجر کے بعد' : 'شام / مغرب کے بعد'}
+                      </span>
+                    )}
+                  </div>
 
                   <div className="flex items-center gap-1.5 text-sm font-semibold text-primary mb-4">
                     <Users className="w-4 h-4" />
@@ -179,6 +199,32 @@ export const ClassesPage: React.FC = () => {
         title={editingClass ? t('classes.edit_class') : t('classes.add_class')}
       >
         <form onSubmit={handleSave} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-semibold text-[var(--color-text)]">کلاس کی قسم</label>
+            <select
+              value={formClassType}
+              onChange={(e) => setFormClassType(e.target.value as ClassType)}
+              className="w-full min-h-[46px] rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-sm text-[var(--color-text)]"
+            >
+              <option value="hifz">فل حفظ</option>
+              <option value="nazira">ناظرہ</option>
+              <option value="school_time">اسکول ٹائم والے بچے</option>
+              <option value="other">عام / دوسری کلاس</option>
+            </select>
+          </div>
+          {formClassType === 'school_time' && (
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-[var(--color-text)]">آنے کا وقت</label>
+              <select
+                value={formSession}
+                onChange={(e) => setFormSession(e.target.value as ClassSession)}
+                className="w-full min-h-[46px] rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-sm text-[var(--color-text)]"
+              >
+                <option value="morning">صبح — فجر کے بعد</option>
+                <option value="evening">شام — مغرب کے بعد</option>
+              </select>
+            </div>
+          )}
           <Input
             label={t('classes.name') + ' *'}
             placeholder="e.g. Class 5, Hifz Batch A"
