@@ -36,7 +36,7 @@ export const classesService = {
         class_type: params.class_type,
         session_time: params.session_time ?? null,
       })
-      .select('id, user_id, name, created_at')
+      .select('id, user_id, name, class_type, session_time, created_at')
       .single();
 
     if (error) throw error;
@@ -50,7 +50,7 @@ export const classesService = {
       .from('classes')
       .update({ name: updates.name, class_type: updates.class_type, session_time: updates.session_time ?? null })
       .eq('id', id)
-      .select('id, user_id, name, created_at')
+      .select('id, user_id, name, class_type, session_time, created_at')
       .single();
 
     if (error) throw error;
