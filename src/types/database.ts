@@ -178,6 +178,7 @@ export type StudentDailyPerformance = {
   // Sabqi (Recent Revision)
   sabqi_listened: boolean;
   sabqi_lines: number;
+  sabqi_para: number | null;
   sabqi_details: string | null;
   sabqi_start_page: number | null;
   sabqi_end_page: number | null;
@@ -387,6 +388,7 @@ export type Database = {
           sabaq_remarks?: string | null;
           sabqi_listened?: boolean;
           sabqi_lines?: number;
+          sabqi_para?: number | null;
           sabqi_details?: string | null;
           sabqi_start_page?: number | null;
           sabqi_end_page?: number | null;
