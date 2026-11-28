@@ -606,7 +606,7 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
                 htmlFor={inputId}
                 className="block text-sm font-bold text-[var(--color-text)]"
               >
-                {t('performance.how_much_recited')}
+                {t(section.key === 'sabaq' ? 'performance.how_much_recited' : 'performance.how_much_recited_count')}
               </label>
 
               <div className="flex items-center gap-2">
@@ -626,8 +626,8 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
                     }
                   }}
                   onChange={(e) => handleLinesChange(section.key, e.target.value)}
-                  placeholder={t('performance.lines_placeholder')}
-                  aria-label={`${section.title} - ${t('performance.lines_count')}`}
+                  placeholder={t(section.key === 'sabaq' ? 'performance.lines_placeholder' : 'performance.count_placeholder')}
+                  aria-label={`${section.title} - ${t(section.key === 'sabaq' ? 'performance.lines_count' : 'performance.how_much_recited_count')}`}
                   aria-invalid={hasError}
                   className={`w-full min-h-[48px] rounded-xl border px-3.5 py-2.5 text-base font-mono font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
                     !section.listened
