@@ -181,6 +181,7 @@ export type StudentDailyPerformance = {
   sabqi_para: number | null;
   sabqi_mistakes: number;
   sabqi_atak_count: number;
+  sabqi_grade: string | null;
   sabqi_details: string | null;
   sabqi_start_page: number | null;
   sabqi_end_page: number | null;
@@ -194,6 +195,7 @@ export type StudentDailyPerformance = {
   manzil_para: number | null;
   manzil_mistakes: number;
   manzil_atak_count: number;
+  manzil_grade: string | null;
   manzil_start_page: number | null;
   manzil_end_page: number | null;
   manzil_completed: boolean;
@@ -210,6 +212,7 @@ export type StudentDailyPerformance = {
   daily_result: DailyResultKey;
   incomplete_reason: string | null;
   teacher_remarks: string | null;
+  teacher_signature: string | null;
 
   created_at: string;
   updated_at: string;
@@ -395,6 +398,7 @@ export type Database = {
           sabqi_para?: number | null;
           sabqi_mistakes?: number;
           sabqi_atak_count?: number;
+          sabqi_grade?: string | null;
           sabqi_details?: string | null;
           sabqi_start_page?: number | null;
           sabqi_end_page?: number | null;
@@ -406,6 +410,7 @@ export type Database = {
           manzil_para?: number | null;
           manzil_mistakes?: number;
           manzil_atak_count?: number;
+          manzil_grade?: string | null;
           manzil_start_page?: number | null;
           manzil_end_page?: number | null;
           manzil_completed?: boolean;
@@ -418,6 +423,7 @@ export type Database = {
           daily_result?: DailyResultKey;
           incomplete_reason?: string | null;
           teacher_remarks?: string | null;
+          teacher_signature?: string | null;
           created_at?: string;
           updated_at?: string;
         };
