@@ -99,6 +99,8 @@
     "was_sabqi_listened": "Was the Sabqi recited?",
     "was_manzil_listened": "Was the Manzil recited?",
     "how_much_recited": "How many lines were recited?",
+    "how_much_recited_count": "How much was recited?",
+    "count_placeholder": "Enter amount",
     "lines_count": "Number of lines recited",
     "lines_placeholder": "Enter lines (0 or more)",
     "lines_unit": "lines",
