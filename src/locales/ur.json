@@ -99,6 +99,8 @@
     "was_sabqi_listened": "کیا سبقی سنائی ہے؟",
     "was_manzil_listened": "کیا منزل سنائی ہے؟",
     "how_much_recited": "کتنی سطریں سنائیں؟",
+    "how_much_recited_count": "کتنی سنائی ہے؟",
+    "count_placeholder": "تعداد درج کریں",
     "lines_count": "سطور کی تعداد",
     "lines_placeholder": "سطور درج کریں (0 یا زیادہ)",
     "lines_unit": "سطور",
