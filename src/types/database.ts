@@ -270,10 +270,14 @@ export type Database = {
           id?: string;
           user_id: string;
           name: string;
+          class_type?: ClassType;
+          session_time?: ClassSession | null;
           created_at?: string;
         };
         Update: {
           name?: string;
+          class_type?: ClassType;
+          session_time?: ClassSession | null;
         };
         Relationships: [];
       };
@@ -391,6 +395,7 @@ export type Database = {
           manzil_listened?: boolean;
           manzil_lines?: number;
           manzil_details?: string | null;
+          manzil_para?: number | null;
           manzil_start_page?: number | null;
           manzil_end_page?: number | null;
           manzil_completed?: boolean;
