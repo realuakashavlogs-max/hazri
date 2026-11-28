@@ -43,6 +43,7 @@ export interface SimpleFormState {
   sabaq_para: string;
   sabqi_listened: boolean;
   sabqi_lines: string;
+  sabqi_para: string;
   manzil_listened: boolean;
   manzil_lines: string;
   manzil_para: string;
@@ -55,6 +56,7 @@ const DEFAULT_FORM_STATE: SimpleFormState = {
   sabaq_para: '',
   sabqi_listened: false,
   sabqi_lines: '0',
+  sabqi_para: '',
   manzil_listened: false,
   manzil_lines: '0',
   manzil_para: '',
@@ -86,8 +88,10 @@ export function buildSimplePerformancePayload(params: {
   const invalidFields: LessonKey[] = [];
 
   const sabaqPara = form.sabaq_listened && form.sabaq_para ? Number(form.sabaq_para) : null;
+  const sabqiPara = form.sabqi_listened && form.sabqi_para ? Number(form.sabqi_para) : null;
   const manzilPara = form.manzil_listened && form.manzil_para ? Number(form.manzil_para) : null;
   if (form.sabaq_listened && (!sabaqPara || sabaqPara < 1 || sabaqPara > 30)) invalidFields.push('sabaq');
+  if (form.sabqi_listened && (!sabqiPara || sabqiPara < 1 || sabqiPara > 30)) invalidFields.push('sabqi');
   if (form.manzil_listened && (!manzilPara || manzilPara < 1 || manzilPara > 30)) invalidFields.push('manzil');
 
   const sabaqLines = parseNonNegativeWholeLines(form.sabaq_lines, form.sabaq_listened);
@@ -127,6 +131,7 @@ export function buildSimplePerformancePayload(params: {
       // Sabqi
       sabqi_listened: form.sabqi_listened,
       sabqi_lines: sabqiLines,
+      sabqi_para: sabqiPara,
       sabqi_details: existingRecord?.sabqi_details ?? null,
       sabqi_start_page: existingRecord?.sabqi_start_page ?? null,
       sabqi_end_page: existingRecord?.sabqi_end_page ?? null,
@@ -194,6 +199,7 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
         sabaq_para: record.sabaq_para ? String(record.sabaq_para) : '',
         sabqi_listened: record.sabqi_listened,
         sabqi_lines: record.sabqi_listened ? String(Math.max(0, record.sabqi_lines ?? 0)) : '0',
+        sabqi_para: record.sabqi_para ? String(record.sabqi_para) : '',
         manzil_listened: record.manzil_listened,
         manzil_lines: record.manzil_listened ? String(Math.max(0, record.manzil_lines ?? 0)) : '0',
         manzil_para: record.manzil_para ? String(record.manzil_para) : '',
@@ -225,6 +231,7 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
           ...prev,
           sabqi_listened: listened,
           sabqi_lines: listened ? prev.sabqi_lines : '0',
+          sabqi_para: listened ? prev.sabqi_para : '',
         };
       }
       return {
@@ -502,21 +509,23 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
               </div>
             </div>
 
-            {(section.key === 'sabaq' || section.key === 'manzil') && section.listened && (
+            {section.listened && (
               <div className="space-y-1.5">
                 <label htmlFor={`${section.key}-para`} className="block text-sm font-bold text-[var(--color-text)]">
-                  {section.key === 'sabaq' ? 'سبق کا پارہ منتخب کریں' : 'منزل کا پارہ منتخب کریں'}
+                  {section.key === 'sabaq' ? 'سبق کا پارہ منتخب کریں' : section.key === 'sabqi' ? 'سبقی کا پارہ منتخب کریں' : 'منزل کا پارہ منتخب کریں'}
                 </label>
                 <select
                   id={`${section.key}-para`}
-                  value={section.key === 'sabaq' ? form.sabaq_para : form.manzil_para}
+                  value={section.key === 'sabaq' ? form.sabaq_para : section.key === 'sabqi' ? form.sabqi_para : form.manzil_para}
                   onChange={(e) => {
                     const value = e.target.value;
                     setSaveNotice(null);
                     setSaveError(null);
                     setForm((prev) => section.key === 'sabaq'
                       ? { ...prev, sabaq_para: value }
-                      : { ...prev, manzil_para: value });
+                      : section.key === 'sabqi'
+                        ? { ...prev, sabqi_para: value }
+                        : { ...prev, manzil_para: value });
                   }}
                   required
                   className="w-full min-h-[48px] rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-2.5 text-sm font-semibold text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-primary"
