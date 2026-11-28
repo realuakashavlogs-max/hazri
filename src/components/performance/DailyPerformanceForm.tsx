@@ -639,7 +639,7 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
               )}
               {!section.listened && <p className="text-xs text-[var(--color-muted)]">{t('performance.lines_disabled_hint')}</p>}
               {hasError && section.key === 'sabaq' && <p className="text-xs font-semibold text-red-600 dark:text-red-400">{t('performance.err_invalid_lines')}</p>}
-            </div>      </div>
+            </div>
           </section>
         );
       })}
