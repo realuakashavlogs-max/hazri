@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AlertCircle,
@@ -212,6 +212,8 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
   const { savePerformance, isSaving } = useSavePerformance();
 
   const [form, setForm] = useState<SimpleFormState>(DEFAULT_FORM_STATE);
+  const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
+  const signatureDrawingRef = useRef(false);
   const [invalidFields, setInvalidFields] = useState<LessonKey[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<'online' | 'offline' | null>(null);
@@ -250,6 +252,24 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
       });
     }
   }, [record, attendance?.status, student.id, recordDate]);
+
+  useEffect(() => {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    if (!form.teacher_signature) return;
+    const image = new Image();
+    image.onload = () => context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    image.src = form.teacher_signature;
+  }, [form.teacher_signature]);
+
+  const finishSignature = () => {
+    const canvas = signatureCanvasRef.current;
+    signatureDrawingRef.current = false;
+    if (canvas) setForm((prev) => ({ ...prev, teacher_signature: canvas.toDataURL('image/png') }));
+  };
 
   const handleListenedChange = (lesson: LessonKey, listened: boolean) => {
     setSaveNotice(null);
@@ -676,11 +696,16 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
       })}
 
       <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 space-y-2 shadow-sm">
-        <label htmlFor="teacher-signature" className="block text-sm font-bold text-[var(--color-text)]">استاد کے دستخط / نام</label>
-        <input id="teacher-signature" type="text" dir="rtl" value={form.teacher_signature}
-          onChange={(e) => { setSaveNotice(null); setForm((prev) => ({ ...prev, teacher_signature: e.target.value })); }}
-          placeholder="اپنے دستخط یا نام درج کریں"
-          className="w-full min-h-[48px] rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-2.5 text-base font-semibold text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-primary" />
+        <label htmlFor="teacher-signature" className="block text-sm font-bold text-[var(--color-text)]">استاد کے دستخط</label>
+        <canvas id="teacher-signature" ref={signatureCanvasRef} width={700} height={180}
+          onPointerDown={(e) => { const canvas = signatureCanvasRef.current; if (!canvas) return; const rect = canvas.getBoundingClientRect(); const ctx = canvas.getContext('2d'); if (!ctx) return; canvas.setPointerCapture(e.pointerId); signatureDrawingRef.current = true; ctx.beginPath(); ctx.moveTo((e.clientX - rect.left) * canvas.width / rect.width, (e.clientY - rect.top) * canvas.height / rect.height); ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#172554'; }}
+          onPointerMove={(e) => { const canvas = signatureCanvasRef.current; if (!canvas || !signatureDrawingRef.current) return; const rect = canvas.getBoundingClientRect(); const ctx = canvas.getContext('2d'); if (!ctx) return; ctx.lineTo((e.clientX - rect.left) * canvas.width / rect.width, (e.clientY - rect.top) * canvas.height / rect.height); ctx.stroke(); }}
+          onPointerUp={finishSignature} onPointerCancel={finishSignature} onPointerLeave={() => { if (signatureDrawingRef.current) finishSignature(); }}
+          className="w-full h-28 rounded-xl border border-dashed border-[var(--color-border)] bg-white touch-none cursor-crosshair" />
+        <div className="flex justify-between items-center gap-2">
+          <span className="text-xs text-[var(--color-muted)]">اوپر انگلی یا ماؤس سے دستخط کریں</span>
+          <button type="button" onClick={() => { const canvas = signatureCanvasRef.current; canvas?.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height); setForm((prev) => ({ ...prev, teacher_signature: '' })); }} className="text-xs font-bold text-red-600">دستخط صاف کریں</button>
+        </div>
       </section>
 
       {/* Save / Update Action */}
