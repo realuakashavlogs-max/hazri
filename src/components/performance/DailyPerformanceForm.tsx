@@ -106,14 +106,13 @@ export function buildSimplePerformancePayload(params: {
   const invalidFields: LessonKey[] = [];
 
   const sabaqPara = form.sabaq_listened && form.sabaq_para ? Number(form.sabaq_para) : null;
-  const sabqiPara = form.sabqi_listened && form.sabqi_para ? Number(form.sabqi_para) : null;
+  const sabqiPara = existingRecord?.sabqi_para ?? null;
   const manzilPara = form.manzil_listened && form.manzil_para ? Number(form.manzil_para) : null;
   const sabqiMistakes = form.sabqi_listened ? Number(form.sabqi_mistakes) : 0;
   const sabqiAtakCount = form.sabqi_listened ? Number(form.sabqi_atak_count) : 0;
   const manzilMistakes = form.manzil_listened ? Number(form.manzil_mistakes) : 0;
   const manzilAtakCount = form.manzil_listened ? Number(form.manzil_atak_count) : 0;
   if (form.sabaq_listened && (!sabaqPara || sabaqPara < 1 || sabaqPara > 30)) invalidFields.push('sabaq');
-  if (form.sabqi_listened && (!sabqiPara || sabqiPara < 1 || sabqiPara > 30)) invalidFields.push('sabqi');
   if (form.manzil_listened && (!manzilPara || manzilPara < 1 || manzilPara > 30)) invalidFields.push('manzil');
   for (const [lesson, value] of [['sabqi', sabqiMistakes], ['sabqi', sabqiAtakCount], ['manzil', manzilMistakes], ['manzil', manzilAtakCount]] as const) {
     if (!Number.isSafeInteger(value) || value < 0 || value > 99) invalidFields.push(lesson);
