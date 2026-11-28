@@ -556,7 +556,7 @@ export const DailyPerformanceForm: React.FC<DailyPerformanceFormProps> = ({
               </div>
             </div>
 
-            {section.listened && (
+            {section.listened && section.key !== 'sabqi' && (
               <div className="space-y-1.5">
                 <label htmlFor={`${section.key}-para`} className="block text-sm font-bold text-[var(--color-text)]">
                   {section.key === 'sabaq' ? 'سبق کا پارہ منتخب کریں' : section.key === 'sabqi' ? 'سبقی کا پارہ منتخب کریں' : 'منزل کا پارہ منتخب کریں'}
